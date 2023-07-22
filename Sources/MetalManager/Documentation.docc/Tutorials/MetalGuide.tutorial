@@ -1,0 +1,13 @@
+@Tutorials(name: "Support Tutorials") {
+    @Intro(title: "Computation using GPU") {
+        Making massive parallel array computations using the GPU.
+    }
+    
+    @Chapter(name: "Metal Computation") {
+        Compute data in parallel with graphics processors.
+        
+        @Image(source: Metal.png, alt: "Metal Icon")
+        
+        @TutorialReference(tutorial: "doc:Computation-with-MetalManager")
+    }
+}

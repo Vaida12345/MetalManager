@@ -1,0 +1,166 @@
+@Tutorial(time: 10) {
+    @Intro(title: "Computation with MetalManager") {
+        We will make the following code run on the GPU:
+        ```swift
+        let output = input.map { $0 * 2 }
+        ```
+        
+        @Image(source: Metal_with_background.png, alt: "The Metal icon with background")
+    }
+    
+    @Section(title: "Convert Swift Code to MSL") {
+        @ContentAndMedia {
+            To use GPU computation, reconstruct the loop with Metal Shading Language (MSL), which looks like c.
+            
+            @Image(source: Metal_file_icon.png, alt: "The Metal file icon")
+        }
+        
+        @Steps {
+            @Step {
+                Create a new Metal file.
+                
+                @Code(name: "Metal File", file: Calculation1.metal)
+            }
+            
+            @Step {
+                Define the Calculation function
+                
+                @Code(name: "Metal File", file: Calculation2.metal)
+            }
+            
+            @Step {
+                Define the Dimension of index
+                
+                Use type of `uint2`, `uint3` for higher dimension. Then use x = index.x, y = index.y. 
+                Each index is assigned to individual thread to perform concurrently.
+                
+                @Code(name: "Metal File", file: Calculation3.metal)
+            }
+            
+            @Step {
+                Define the input array.
+                
+                Arrays and mutable variables are passed as arguments. Passing constants will be introduced later.
+                
+                @Code(name: "Metal File", file: Calculation4.metal)
+            }
+            
+            @Step {
+                Define the output array.
+                
+                Note that as in c, the `*` means it is a pointer, which can be interpreted as an array.
+                
+                @Code(name: "Metal File", file: Calculation5.metal)
+            }
+            
+            @Step {
+                Pass in non-array constents.
+                
+                Please note that the number in the argument is rising.
+                
+                @Code(name: "Metal File", file: Calculation6.metal)
+            }
+            
+            @Step {
+                Define the body of the loop (function).
+                
+                The for-loop is replaced with a collection of threads, each of which calls this function.
+                The function returns nothing. It changes its argument.
+                
+                @Code(name: "Metal File", file: Calculation7.metal)
+            }
+        }
+    }
+    
+    @Section(title: "Using the metal file") {
+        @ContentAndMedia {
+            Now that the file has been defined, it can be used in Swift.
+            
+            @Image(source: Swift.png, alt: "The Swift bird")
+        }
+        
+        @Steps {
+            @Step {
+                Define the ``Support/MetalManager``.
+                
+                The name is the name of the metal function, here it is "calculation".
+                
+                @Code(name: "main.swift", file: File1.swift)
+            }
+            
+            @Step {
+                Pass in the constants.
+                
+                Please note that the order must be the same as the that in the `metal` file.
+                
+                @Code(name: "main.swift", file: File2.swift)
+            }
+            
+            @Step {
+                Submit the constants, create buffers.
+                
+                This method needs to be called even if no constants were defined.
+                
+                @Code(name: "main.swift", file: File3.swift)
+            }
+            
+            @Step {
+                Set the size of inputs.
+                
+                This is the size of `thread_position_in_grid` in metal.
+                
+                @Code(name: "main.swift", file: File4.swift)
+            }
+            
+            @Step {
+                Pass the input array (buffer).
+                
+                @Code(name: "main.swift", file: File5.swift)
+            }
+            
+            @Step {
+                Define the output array (buffer).
+                
+                @Code(name: "main.swift", file: File6.swift)
+            }
+            
+            @Step {
+                Runs the metal.
+                
+                @Code(name: "main.swift", file: File7.swift)
+            }
+            
+            @Step {
+                Get the result as an array.
+                
+                Others options include ``Support/MetalManager/getOutputPointer()`` and ``Support/MetalManager/getOutputShapedArray(shape:)``
+                
+                @Code(name: "main.swift", file: File8.swift)
+            }
+        }
+    }
+        
+    @Assessments {
+        @MultipleChoice {
+            Should we use Metal to perform small computations? 
+            
+            Like in this case, calculate the doubled value of an array of elements.
+            
+            @Choice(isCorrect: false) {
+                Yes! Metal is the best!
+                
+                @Justification(reaction: "Not really.") {
+                    Although Metal is fast in computation, it would take time to prepare the requirements. For simple tasks, the Swift `Dispatch`, which uses CPUs may be a better choice. In this circumstance, the `vDSP` in the `Accelerate` framework is recommended.
+                }
+            }
+            
+            @Choice(isCorrect: true) {
+                Well...
+                
+                @Justification(reaction: "That's right!") {
+                    Metal may not always be the best choice, sometimes the Swift `Dispatch` or `vDSP` may be better.
+                }
+            }
+        }
+    }
+}
