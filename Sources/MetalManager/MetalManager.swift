@@ -27,7 +27,7 @@ import CoreML
 ///
 /// try manager.perform()
 /// ```
-public struct MetalManager<OutputElement> {
+public final class MetalManager<OutputElement> {
     
     /// The `MTLDevice` used for calculation.
     ///
@@ -99,7 +99,7 @@ public struct MetalManager<OutputElement> {
     /// - Parameters:
     ///   - value: A pointer to the constant value.
     ///   - type: The data type of the function constant.
-    public mutating func setConstant(_ value: UnsafeRawPointer, type: MTLDataType) {
+    public func setConstant(_ value: UnsafeRawPointer, type: MTLDataType) {
         self.constants.setConstantValue(value, type: type, index: currentConstantIndex)
         currentConstantIndex += 1
     }
@@ -109,7 +109,7 @@ public struct MetalManager<OutputElement> {
     /// - Important: This method must be called after passing all the constants and before passing any array.
     ///
     /// - Important: You need to call this function even if no constants were passed.
-    public mutating func submitConstants() throws {
+    public func submitConstants() throws {
         
         // Call the metal function. The name is the function name.
         self.metalFunction = try library.makeFunction(name: functionName, constantValues: constants)
@@ -140,7 +140,7 @@ public struct MetalManager<OutputElement> {
     ///   - input: The input array.
     ///
     /// - SeeAlso: ``setInputBuffer(_:length:)``
-    public mutating func setInputBuffer<Element>(_ input: Array<Element>) throws {
+    public func setInputBuffer<Element>(_ input: Array<Element>) throws {
         precondition(commandEncoder != nil, "Call `submitConstants` first")
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared) else {
@@ -162,7 +162,7 @@ public struct MetalManager<OutputElement> {
     ///   - length: The number of elements in this buffer.
     ///
     /// - SeeAlso: ``setInputBuffer(_:)``
-    public mutating func setInputBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws {
+    public func setInputBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws {
         precondition(commandEncoder != nil, "Call `submitConstants` first")
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: length * MemoryLayout<Element>.size, options: .storageModeShared) else {
@@ -179,7 +179,7 @@ public struct MetalManager<OutputElement> {
     ///   - width: The width of the volume.
     ///   - height: The height of the volume. Set to 1 if the object only has one dimension.
     ///   - depth: The depth of the volume. Set to 1 if the object has one or two dimensions.
-    public mutating func setGridSize(width: Int, height: Int = 1, depth: Int = 1) {
+    public func setGridSize(width: Int, height: Int = 1, depth: Int = 1) {
         self.gridSize = MTLSize(width: width, height: height, depth: depth)
     }
     
@@ -191,7 +191,7 @@ public struct MetalManager<OutputElement> {
     ///
     /// - Parameters:
     ///   - count: The number of elements in the output buffer.
-    public mutating func setOutputBuffer(count: Int) throws {
+    public func setOutputBuffer(count: Int) throws {
         self.outputArrayCount = count
         
         guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<OutputElement>.size, options: .storageModeShared) else {
@@ -204,7 +204,7 @@ public struct MetalManager<OutputElement> {
     
     
     /// Runs the function.
-    public mutating func perform() throws {
+    public func perform() throws {
         
         guard let gridSize else { throw Error.invalidGridSize }
         
