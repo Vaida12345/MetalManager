@@ -19,20 +19,25 @@
             @Step {
                 Create a new Metal file.
                 
+                In a swift package, create a new *empty file*, and change extension to `metal`.
+                Then, copy the two lines as it is.
+                
                 @Code(name: "Metal File", file: Calculation1.metal)
             }
             
             @Step {
-                Define the Calculation function
+                Define the Calculation function.
+                
+                The name is used inside the initializer for the `MetalManager`.
                 
                 @Code(name: "Metal File", file: Calculation2.metal)
             }
             
             @Step {
-                Define the Dimension of index
+                Define the Dimension of index.
                 
-                Use type of `uint2`, `uint3` for higher dimension. Then use x = index.x, y = index.y. 
-                Each index is assigned to individual thread to perform concurrently.
+                Use type of `uint2`, `uint3` for higher dimension. Then, x = index.x, y = index.y. 
+                Each index is assigned to individual thread.
                 
                 @Code(name: "Metal File", file: Calculation3.metal)
             }
@@ -48,13 +53,11 @@
             @Step {
                 Define the output array.
                 
-                Note that as in c, the `*` means it is a pointer, which can be interpreted as an array.
-                
                 @Code(name: "Metal File", file: Calculation5.metal)
             }
             
             @Step {
-                Pass in non-array constents.
+                Pass in non-array constants.
                 
                 Please note that the number in the argument is rising.
                 
@@ -81,7 +84,7 @@
         
         @Steps {
             @Step {
-                Define the ``Support/MetalManager``.
+                Define the ``MetalManager/MetalManager``.
                 
                 The name is the name of the metal function, here it is "calculation".
                 
@@ -133,9 +136,17 @@
             @Step {
                 Get the result as an array.
                 
-                Others options include ``Support/MetalManager/getOutputPointer()`` and ``Support/MetalManager/getOutputShapedArray(shape:)``
+                Others options include ``MetalManager/MetalManager/getOutputPointer()`` and ``MetalManager/MetalManager/getOutputShapedArray(shape:)``
                 
                 @Code(name: "main.swift", file: File8.swift)
+            }
+            
+            @Step {
+                Get an inout array.
+                
+                To reduce memory usage, one can mutate the input buffer, which needs to be retained to obtain outputs.
+                
+                @Code(name: "main.swift", file: File9.swift)
             }
         }
     }

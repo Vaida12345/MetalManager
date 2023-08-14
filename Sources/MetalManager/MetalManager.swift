@@ -83,7 +83,7 @@ public final class MetalManager<OutputElement> {
         guard let device = MTLCreateSystemDefaultDevice() else { throw Error.cannotCreateMetalDevice }
         self.device = device
         
-        guard let library = try? device.makeDefaultLibrary(bundle: bundle) else { throw Error.cannotCreateMetalLibrary }
+        let library = try device.makeDefaultLibrary(bundle: bundle)
         self.library = library
         
         self.functionName = name
@@ -139,8 +139,11 @@ public final class MetalManager<OutputElement> {
     /// - Parameters:
     ///   - input: The input array.
     ///
+    /// - Returns: The encoded buffer, can be retained to obtain results.
+    ///
     /// - SeeAlso: ``setInputBuffer(_:length:)``
-    public func setInputBuffer<Element>(_ input: Array<Element>) throws {
+    @discardableResult
+    public func setInputBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
         precondition(commandEncoder != nil, "Call `submitConstants` first")
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared) else {
@@ -149,6 +152,8 @@ public final class MetalManager<OutputElement> {
         
         self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
         currentArrayIndex += 1
+        
+        return buffer
     }
     
     /// Sets a buffer for the compute function.
