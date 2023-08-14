@@ -161,8 +161,11 @@ public final class MetalManager<OutputElement> {
     ///   - input: A pointer to the constant value.
     ///   - length: The number of elements in this buffer.
     ///
+    /// - Returns: The encoded buffer, can be retained to obtain results.
+    ///
     /// - SeeAlso: ``setInputBuffer(_:)``
-    public func setInputBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws {
+    @discardableResult
+    public func setInputBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws -> MTLBuffer {
         precondition(commandEncoder != nil, "Call `submitConstants` first")
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: length * MemoryLayout<Element>.size, options: .storageModeShared) else {
@@ -171,6 +174,7 @@ public final class MetalManager<OutputElement> {
         
         self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
         currentArrayIndex += 1
+        return buffer
     }
     
     /// Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
