@@ -208,7 +208,22 @@ public final class MetalManager<OutputElement> {
         }
         
         self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+        currentArrayIndex += 1
         self.resultBuffer = buffer
+    }
+    
+    /// Sets the empty buffer for the compute function.
+    ///
+    /// - Parameters:
+    ///   - count: The number of elements in the output buffer.
+    public func setEmptyBuffer<Element>(count: Int, type: Element.Type = OutputElement.self) throws -> MTLBuffer {
+        guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<Element>.size, options: .storageModeShared) else {
+            throw Error.cannotCreateMetalCommandBuffer
+        }
+        
+        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+        currentArrayIndex += 1
+        return buffer
     }
     
     
