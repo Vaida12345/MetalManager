@@ -275,7 +275,10 @@ public final class MetalManager<OutputElement> {
                 preSize[1] = Double(gridSize.height) * factor
             }
             
-            commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: MTLSize(width: Int(preSize[0]), height: Int(preSize[1]), depth: Int(preSize[2])))
+            commandEncoder.dispatchThreads(gridSize, 
+                                           threadsPerThreadgroup: MTLSize(width: min(Int(preSize[0]), gridSize.width),
+                                                                          height: min(Int(preSize[1]), gridSize.height),
+                                                                          depth: min(Int(preSize[2]), gridSize.depth)))
         }
         
         // Run the metal.
