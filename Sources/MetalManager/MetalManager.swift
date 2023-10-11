@@ -18,7 +18,7 @@ import CoreML
 /// Performs GPU calculation of the metal file called *calculation*.
 ///
 /// ```swift
-/// var manager = try MetalManager(name: "calculation", outputElementType: Float.self)
+/// let manager = try MetalManager(name: "calculation")
 /// try manager.submitConstants()
 ///
 /// try manager.setInputBuffer(input)
@@ -27,7 +27,7 @@ import CoreML
 ///
 /// try manager.perform()
 /// ```
-public final class MetalManager<OutputElement> {
+public final class MetalManager {
     
     /// The `MTLDevice` used for calculation.
     ///
@@ -65,7 +65,6 @@ public final class MetalManager<OutputElement> {
     private var commandQueue: MTLCommandQueue?
     private var commandBuffer: MTLCommandBuffer?
     private var commandEncoder: MTLComputeCommandEncoder?
-    private var resultBuffer: MTLBuffer?
     
     private var currentConstantIndex = 0
     private var currentArrayIndex = 0
@@ -77,9 +76,8 @@ public final class MetalManager<OutputElement> {
     ///
     /// - Parameters:
     ///   - name: The name of the metal function, as defined in the `.metal` file.
-    ///   - outputElementType: The type of element in the output buffer.
     ///   - bundle: The bundle where the given `.metal` file is located.
-    public init(name: String, outputElementType: OutputElement.Type, fileWithin bundle: Bundle = .main) throws {
+    public init(name: String, fileWithin bundle: Bundle = .main) throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw Error.cannotCreateMetalDevice }
         self.device = device
         
@@ -140,10 +138,8 @@ public final class MetalManager<OutputElement> {
     ///   - input: The input array.
     ///
     /// - Returns: The encoded buffer, can be retained to obtain results.
-    ///
-    /// - SeeAlso: ``setInputBuffer(_:length:)``
     @discardableResult
-    public func setInputBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
+    public func setBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
         precondition(commandEncoder != nil, "Call `submitConstants` first")
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared) else {
@@ -167,13 +163,25 @@ public final class MetalManager<OutputElement> {
     ///   - length: The number of elements in this buffer.
     ///
     /// - Returns: The encoded buffer, can be retained to obtain results.
-    ///
-    /// - SeeAlso: ``setInputBuffer(_:)``
     @discardableResult
-    public func setInputBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws -> MTLBuffer {
+    public func setBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws -> MTLBuffer {
         precondition(commandEncoder != nil, "Call `submitConstants` first")
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: length * MemoryLayout<Element>.size, options: .storageModeShared) else {
+            throw Error.cannotCreateMetalCommandBuffer
+        }
+        
+        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+        currentArrayIndex += 1
+        return buffer
+    }
+    
+    /// Sets the empty buffer for the compute function.
+    ///
+    /// - Parameters:
+    ///   - count: The number of elements in the output buffer.
+    public func setEmptyBuffer<Element>(count: Int, type: Element.Type) throws -> MTLBuffer {
+        guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<Element>.size, options: .storageModeShared) else {
             throw Error.cannotCreateMetalCommandBuffer
         }
         
@@ -190,40 +198,6 @@ public final class MetalManager<OutputElement> {
     ///   - depth: The depth of the volume. Set to 1 if the object has one or two dimensions.
     public func setGridSize(width: Int, height: Int = 1, depth: Int = 1) {
         self.gridSize = MTLSize(width: width, height: height, depth: depth)
-    }
-    
-    /// Sets the result buffer for the compute function.
-    ///
-    /// Only one output buffer can be set.
-    ///
-    /// - Important: This method must be called after all the input buffers are set.
-    ///
-    /// - Parameters:
-    ///   - count: The number of elements in the output buffer.
-    public func setOutputBuffer(count: Int) throws {
-        self.outputArrayCount = count
-        
-        guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<OutputElement>.size, options: .storageModeShared) else {
-            throw Error.cannotCreateMetalCommandBuffer
-        }
-        
-        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
-        currentArrayIndex += 1
-        self.resultBuffer = buffer
-    }
-    
-    /// Sets the empty buffer for the compute function.
-    ///
-    /// - Parameters:
-    ///   - count: The number of elements in the output buffer.
-    public func setEmptyBuffer<Element>(count: Int, type: Element.Type = OutputElement.self) throws -> MTLBuffer {
-        guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<Element>.size, options: .storageModeShared) else {
-            throw Error.cannotCreateMetalCommandBuffer
-        }
-        
-        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
-        currentArrayIndex += 1
-        return buffer
     }
     
     
@@ -285,29 +259,6 @@ public final class MetalManager<OutputElement> {
         commandEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
-    }
-    
-    /// Gets the result as raw pointer.
-    public func getOutputPointer() -> UnsafeMutableRawPointer {
-        precondition(resultBuffer != nil, "Perform the calculation first.")
-        
-        return resultBuffer!.contents()
-    }
-    
-    /// Gets the result as an array.
-    public func getOutputArray() -> Array<OutputElement> {
-        precondition(resultBuffer != nil, "Perform the calculation first.")
-        
-        let pointer = resultBuffer!.contents().bindMemory(to: OutputElement.self, capacity: outputArrayCount)
-        return Array(UnsafeBufferPointer(start: pointer, count: outputArrayCount))
-    }
-    
-    /// Gets the result as a `MLShapedArray`.
-    @available(macOS 12, iOS 15, *)
-    public func getOutputShapedArray(shape: [Int]) -> MLShapedArray<OutputElement> where OutputElement: MLShapedArrayScalar {
-        precondition(resultBuffer != nil, "Perform the calculation first.")
-        
-        return MLShapedArray<OutputElement>(bytesNoCopy: resultBuffer!.contents(), shape: shape, deallocator: .none)
     }
     
     private enum Error: LocalizedError {
