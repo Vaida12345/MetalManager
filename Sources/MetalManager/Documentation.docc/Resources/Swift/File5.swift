@@ -1,20 +1,20 @@
 
 // MARK: - Prepare
 
-var valueA = 1
-var valueB = 1
+var alpha = 2.0
+var beta = 0.2
 
 let input = [Float](repeating: 1, count: 100)
 
 // MARK: - Computation
 
-var manager = try MetalManager(name: "calculation", outputElementType: Float.self)
+let manager = try MetalManager(name: "linear")
 
-manager.setConstant(&valueA, type: MTLDataType.int)
-manager.setConstant(&valueB, type: MTLDataType.int)
+manager.setConstant(&alpha, type: MTLDataType.float)
+manager.setConstant(&beta,  type: MTLDataType.float)
 
-try manager.submitConstants()
+let buffer = try manager.setBuffer(input)
 
-manager.setGridSize(width: input.count)
+try manager.perform(gridSize: MTLSize(width: input.count, height: 1, depth: 1))
 
-try manager.setInputBuffer(input)
+return buffer.contents().bindMemory(to: Float.self, capacity: input.count)

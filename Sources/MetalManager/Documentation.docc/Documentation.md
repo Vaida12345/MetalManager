@@ -6,24 +6,18 @@
 
 - <doc:/tutorials/MetalGuide>
 
+### Manager
+- ``MetalManager/MetalManager``
+
 ### Creating a manager
-- ``init(name:outputElementType:fileWithin:)``
+- ``MetalManager/MetalManager/init(name:fileWithin:)``
 
 ### The workflow
-Except for ``setGridSize(width:height:depth:)``, the methods must be called in this order.
-- ``setConstant(_:type:)``
-- ``submitConstants()``
-- ``setInputBuffer(_:)``
-- ``setOutputBuffer(count:)``
-- ``setGridSize(width:height:depth:)``
+- ``MetalManager/MetalManager/setConstant(_:type:)``
+- ``MetalManager/MetalManager/setBuffer(_:)``
 
 ### Additional Setups
-- ``threadsPerThreadGroup``
+- ``MetalManager/MetalManager/threadsPerThreadGroup``
 
 ### Performs calculation
-- ``perform()``
-
-### Obtaining results
-- ``getOutputPointer()``
-- ``getOutputArray()``
-- ``getOutputShapedArray(shape:)``
+- ``MetalManager/MetalManager/perform(gridSize:)``

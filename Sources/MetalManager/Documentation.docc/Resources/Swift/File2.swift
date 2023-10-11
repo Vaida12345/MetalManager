@@ -1,12 +1,12 @@
 
 // MARK: - Prepare
 
-var valueA = 1
-var valueB = 1
+var alpha = 2.0
+var beta = 0.2
 
 // MARK: - Computation
 
-var manager = try MetalManager(name: "calculation", outputElementType: Float.self)
+let manager = try MetalManager(name: "linear")
 
-manager.setConstant(&valueA, type: MTLDataType.int)
-manager.setConstant(&valueB, type: MTLDataType.int)
+manager.setConstant(&alpha, type: MTLDataType.float)
+manager.setConstant(&beta,  type: MTLDataType.float)

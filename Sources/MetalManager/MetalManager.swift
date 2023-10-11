@@ -19,14 +19,15 @@ import CoreML
 ///
 /// ```swift
 /// let manager = try MetalManager(name: "calculation")
-/// try manager.submitConstants()
 ///
-/// try manager.setInputBuffer(input)
-/// try manager.setOutputBuffer(count: input.count)
+/// try manager.setBuffer(input)
+/// let result = try manager.setBuffer(count: input.count)
 /// manager.setGridSize(width: input.count)
 ///
 /// try manager.perform()
 /// ```
+///
+/// - Important: **Do not** reuse a manager. A metal function is cashed automatically.
 public final class MetalManager {
     
     /// The `MTLDevice` used for calculation.
@@ -49,9 +50,6 @@ public final class MetalManager {
     /// ```
     private var constants: MTLFunctionConstantValues
     
-    /// The size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
-    private var gridSize: MTLSize?
-    
     /// Defines the size which can be calculated in a batch. the three arguments represent the x, y, z dimensions.
     ///
     /// - Note: The default value is calculated by the `gridSize`.
@@ -69,10 +67,10 @@ public final class MetalManager {
     private var currentConstantIndex = 0
     private var currentArrayIndex = 0
     
-    private var outputArrayCount = 0
-    
     
     /// Initialize a `Metal` function with its name.
+    ///
+    /// Please specify `bundle` as `.bundle` when defining in swift package. The bundle needs to be included when distributing a command line tool.
     ///
     /// - Parameters:
     ///   - name: The name of the metal function, as defined in the `.metal` file.
@@ -107,7 +105,7 @@ public final class MetalManager {
     /// - Important: This method must be called after passing all the constants and before passing any array.
     ///
     /// - Important: You need to call this function even if no constants were passed.
-    public func submitConstants() throws {
+    private func submitConstants() throws {
         
         // Call the metal function. The name is the function name.
         self.metalFunction = try library.makeFunction(name: functionName, constantValues: constants)
@@ -140,7 +138,7 @@ public final class MetalManager {
     /// - Returns: The encoded buffer, can be retained to obtain results.
     @discardableResult
     public func setBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
-        precondition(commandEncoder != nil, "Call `submitConstants` first")
+        if commandBuffer == nil { try self.submitConstants() }
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared) else {
             throw Error.cannotCreateMetalCommandBuffer
@@ -165,7 +163,7 @@ public final class MetalManager {
     /// - Returns: The encoded buffer, can be retained to obtain results.
     @discardableResult
     public func setBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws -> MTLBuffer {
-        precondition(commandEncoder != nil, "Call `submitConstants` first")
+        if commandBuffer == nil { try self.submitConstants() }
         
         guard let buffer = self.device.makeBuffer(bytes: input, length: length * MemoryLayout<Element>.size, options: .storageModeShared) else {
             throw Error.cannotCreateMetalCommandBuffer
@@ -181,6 +179,8 @@ public final class MetalManager {
     /// - Parameters:
     ///   - count: The number of elements in the output buffer.
     public func setEmptyBuffer<Element>(count: Int, type: Element.Type) throws -> MTLBuffer {
+        if commandBuffer == nil { try self.submitConstants() }
+        
         guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<Element>.size, options: .storageModeShared) else {
             throw Error.cannotCreateMetalCommandBuffer
         }
@@ -190,21 +190,11 @@ public final class MetalManager {
         return buffer
     }
     
-    /// Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
+    /// Runs the function.
     ///
     /// - Parameters:
-    ///   - width: The width of the volume.
-    ///   - height: The height of the volume. Set to 1 if the object only has one dimension.
-    ///   - depth: The depth of the volume. Set to 1 if the object has one or two dimensions.
-    public func setGridSize(width: Int, height: Int = 1, depth: Int = 1) {
-        self.gridSize = MTLSize(width: width, height: height, depth: depth)
-    }
-    
-    
-    /// Runs the function.
-    public func perform() throws {
-        
-        guard let gridSize else { throw Error.invalidGridSize }
+    ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
+    public func perform(gridSize: MTLSize) throws {
         
         guard let pipelineState, let commandBuffer, let commandEncoder else {
             fatalError("Make sure called `submitConstants` first.")
