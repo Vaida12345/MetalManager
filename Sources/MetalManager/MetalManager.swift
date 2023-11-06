@@ -100,6 +100,20 @@ public final class MetalManager {
         currentConstantIndex += 1
     }
     
+    /// Sets a value for a function constant.
+    ///
+    /// - Important: This method must be called in the same order as the constants.
+    ///
+    /// - Precondition: The index of constants in the `.metal` file must start with `0`.
+    ///
+    /// - Parameters:
+    ///   - value: A pointer to the constant value.
+    public func setConstant(_ value: Int) {
+        var _value = value
+        self.constants.setConstantValue(&_value, type: .int, index: currentConstantIndex)
+        currentConstantIndex += 1
+    }
+    
     /// Submits the constants and make command buffers.
     ///
     /// - Important: This method must be called after passing all the constants and before passing any array.
