@@ -22,9 +22,9 @@ import CoreML
 ///
 /// try manager.setBuffer(input)
 /// let result = try manager.setBuffer(count: input.count)
-/// manager.setGridSize(width: input.count)
+/// try manager.perform(gridSize: MTLSize(width: input.count, height: 1, depth: 1))
 ///
-/// try manager.perform()
+/// return buffer.contents()
 /// ```
 ///
 /// - Important: **Do not** reuse a manager. A metal function is cashed automatically.
@@ -104,13 +104,23 @@ public final class MetalManager {
     ///
     /// - Important: This method must be called in the same order as the constants.
     ///
-    /// - Precondition: The index of constants in the `.metal` file must start with `0`.
-    ///
     /// - Parameters:
     ///   - value: A pointer to the constant value.
     public func setConstant(_ value: Int) {
         var _value = value
         self.constants.setConstantValue(&_value, type: .int, index: currentConstantIndex)
+        currentConstantIndex += 1
+    }
+    
+    /// Sets a value for a function constant.
+    ///
+    /// - Important: This method must be called in the same order as the constants.
+    ///
+    /// - Parameters:
+    ///   - value: A pointer to the constant value.
+    public func setConstant(_ value: Float) {
+        var _value = value
+        self.constants.setConstantValue(&_value, type: .float, index: currentConstantIndex)
         currentConstantIndex += 1
     }
     
