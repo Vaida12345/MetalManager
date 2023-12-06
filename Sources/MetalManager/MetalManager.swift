@@ -77,6 +77,9 @@ public final class MetalManager {
     ///   - bundle: The bundle where the given `.metal` file is located.
     public init(name: String, fileWithin bundle: Bundle = .main) throws {
         guard let device = MTLCreateSystemDefaultDevice() else { throw Error.cannotCreateMetalDevice }
+#if os(iOS)
+        guard device.supportsFeatureSet(.iOS_GPUFamily4_v1) else { throw Error.hardwareNotSupported }
+#endif
         self.device = device
         
         let library = try device.makeDefaultLibrary(bundle: bundle)
@@ -283,6 +286,7 @@ public final class MetalManager {
         case cannotCreateMetalCommandBuffer
         case cannotCreateMetalCommandEncoder
         case invalidGridSize
+        case hardwareNotSupported
         
         var errorDescription: String? { "Metal Error" }
         
@@ -300,6 +304,8 @@ public final class MetalManager {
                 return "Cannot create metal command encoder"
             case .invalidGridSize:
                 return "Invalid metal grid size"
+            case .hardwareNotSupported:
+                return "The hardware running this program is too old to support the feature required"
             }
         }
     }
