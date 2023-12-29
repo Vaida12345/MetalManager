@@ -223,9 +223,7 @@ public final class MetalManager {
     ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
     public func perform(gridSize: MTLSize) throws {
         
-        guard let pipelineState, let commandBuffer, let commandEncoder else {
-            fatalError("Make sure called `submitConstants` first.")
-        }
+        guard let pipelineState, let commandBuffer, let commandEncoder else { fatalError("Make sure called `submitConstants` first.") }
         
         if let threadsPerThreadGroup = threadsPerThreadGroup {
             commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadGroup)
