@@ -21,7 +21,7 @@ import CoreML
 /// let manager = try MetalManager(name: "calculation")
 ///
 /// try manager.setBuffer(input)
-/// let result = try manager.setBuffer(count: input.count)
+/// let buffer = try manager.setEmptyBuffer(count: input.count, type: Float.self)
 /// try manager.perform(gridSize: MTLSize(width: input.count, height: 1, depth: 1))
 ///
 /// return buffer.contents()
