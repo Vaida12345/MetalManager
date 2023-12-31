@@ -159,6 +159,8 @@ public final class MetalManager {
     ///
     /// - Important: This method must be called in the same order as the arguments.
     ///
+    /// - Note: The result buffer is managed by the Metal Framework.
+    ///
     /// - Parameters:
     ///   - input: The input array.
     ///
@@ -183,6 +185,8 @@ public final class MetalManager {
     ///
     /// - Important: This method must be called in the same order as the arguments.
     ///
+    /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
+    ///
     /// - Parameters:
     ///   - input: A pointer to the constant value.
     ///   - length: The number of elements in this buffer.
@@ -202,6 +206,8 @@ public final class MetalManager {
     }
     
     /// Sets the empty buffer for the compute function.
+    ///
+    /// - Note: The result buffer is managed by the Metal Framework.
     ///
     /// - Parameters:
     ///   - count: The number of elements in the output buffer.
