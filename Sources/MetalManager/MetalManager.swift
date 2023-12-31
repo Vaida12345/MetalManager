@@ -169,7 +169,9 @@ public final class MetalManager {
     public func setBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
         if commandBuffer == nil { try self.submitConstants() }
         
-        guard let buffer = self.device.makeBuffer(bytes: input, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared) else {
+        guard let buffer = input.withUnsafeBufferPointer({ ptr in
+            self.device.makeBuffer(bytes: ptr.baseAddress!, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared)
+        }) else {
             throw Error.cannotCreateMetalCommandBuffer
         }
         
@@ -203,6 +205,25 @@ public final class MetalManager {
         self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
         currentArrayIndex += 1
         return buffer
+    }
+    
+    /// Sets a buffer for the compute function.
+    ///
+    /// Multiple input buffers can be set.
+    ///
+    /// - Important: This method must be called in the same order as the arguments.
+    ///
+    /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
+    ///
+    /// - Parameters:
+    ///   - input: A pointer to the constant value.
+    ///   - length: The number of elements in this buffer.
+    ///
+    /// - Returns: The encoded buffer, can be retained to obtain results.
+    @discardableResult
+    @inline(__always)
+    public func setBuffer<Element>(_ input: UnsafeMutableBufferPointer<Element>) throws -> MTLBuffer {
+        try self.setBuffer(input.baseAddress!, length: input.count)
     }
     
     /// Sets the empty buffer for the compute function.
