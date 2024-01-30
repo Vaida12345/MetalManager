@@ -3,7 +3,7 @@
 
 import PackageDescription
 
-let package = Package(
+let package = Package (
     name: "MetalManager",
     products: [
         .library(name: "MetalManager", targets: ["MetalManager"]),
