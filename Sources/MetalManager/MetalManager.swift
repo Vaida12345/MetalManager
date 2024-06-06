@@ -28,6 +28,12 @@ import CoreML
 /// ```
 ///
 /// - Important: **Do not** reuse a manager. A metal function is cashed automatically.
+///
+/// > Experiment:
+/// >
+/// > - In a benchmark of adding two `Double`s, `vDSP.add` significantly outperformed `Metal`.
+/// >
+/// > - Any function defined in `Accelerate` significantly outperforms `Metal`.
 public final class MetalManager {
     
     /// The `MTLDevice` used for calculation.
@@ -252,7 +258,12 @@ public final class MetalManager {
         
         guard let pipelineState, let commandBuffer, let commandEncoder else { fatalError("Make sure called `submitConstants` first.") }
         
-        if let threadsPerThreadGroup = threadsPerThreadGroup {
+        if gridSize.height == 1 && gridSize.depth == 1 {
+            commandEncoder.dispatchThreads(gridSize,
+                                           threadsPerThreadgroup: MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup,
+                                                                          height: 0,
+                                                                          depth: 0))
+        } else if let threadsPerThreadGroup = threadsPerThreadGroup {
             commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadGroup)
         } else {
             let normalize = { (_ input: Int) -> Int in
