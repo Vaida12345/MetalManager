@@ -261,8 +261,8 @@ public final class MetalManager {
         if gridSize.height == 1 && gridSize.depth == 1 {
             commandEncoder.dispatchThreads(gridSize,
                                            threadsPerThreadgroup: MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup,
-                                                                          height: 0,
-                                                                          depth: 0))
+                                                                          height: 1,
+                                                                          depth: 1))
         } else if let threadsPerThreadGroup = threadsPerThreadGroup {
             commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadGroup)
         } else {
