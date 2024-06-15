@@ -223,7 +223,6 @@ public final class MetalManager {
     ///
     /// - Parameters:
     ///   - input: A pointer to the constant value.
-    ///   - length: The number of elements in this buffer.
     ///
     /// - Returns: The encoded buffer, can be retained to obtain results.
     @discardableResult
@@ -238,6 +237,7 @@ public final class MetalManager {
     ///
     /// - Parameters:
     ///   - count: The number of elements in the output buffer.
+    ///   - type: The type of such buffer.
     public func setEmptyBuffer<Element>(count: Int, type: Element.Type) throws -> MTLBuffer {
         if commandBuffer == nil { try self.submitConstants() }
         
