@@ -176,7 +176,7 @@ public final class MetalManager {
         if commandBuffer == nil { try self.submitConstants() }
         
         guard let buffer = input.withUnsafeBufferPointer({ ptr in
-            self.device.makeBuffer(bytes: ptr.baseAddress!, length: input.count * MemoryLayout<Element>.size, options: .storageModeShared)
+            self.device.makeBuffer(bytes: ptr.baseAddress!, length: input.count * MemoryLayout<Element>.stride, options: .storageModeShared)
         }) else {
             throw Error.cannotCreateMetalCommandBuffer
         }
