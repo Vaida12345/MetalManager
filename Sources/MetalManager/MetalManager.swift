@@ -127,6 +127,18 @@ public final class MetalManager {
     ///
     /// - Parameters:
     ///   - value: A pointer to the constant value.
+    public func setConstant(_ value: UInt8) {
+        var _value = value
+        self.constants.setConstantValue(&_value, type: .uchar, index: currentConstantIndex)
+        currentConstantIndex += 1
+    }
+    
+    /// Sets a value for a function constant.
+    ///
+    /// - Important: This method must be called in the same order as the constants.
+    ///
+    /// - Parameters:
+    ///   - value: A pointer to the constant value.
     public func setConstant(_ value: Float) {
         var _value = value
         self.constants.setConstantValue(&_value, type: .float, index: currentConstantIndex)
@@ -221,6 +233,8 @@ public final class MetalManager {
     ///
     /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
     ///
+    /// - Important: The input buffer does not reflect the changes to the MTLBuffer.
+    ///
     /// - Parameters:
     ///   - input: A pointer to the constant value.
     ///
@@ -231,7 +245,7 @@ public final class MetalManager {
         try self.setBuffer(input.baseAddress!, length: input.count)
     }
     
-    /// Sets the empty buffer for the compute function.
+    /// Sets the empty buffer, filled with `zero`, for the compute function.
     ///
     /// - Note: The result buffer is managed by the Metal Framework.
     ///
@@ -312,6 +326,13 @@ public final class MetalManager {
         commandEncoder.endEncoding()
         commandBuffer.commit()
         commandBuffer.waitUntilCompleted()
+    }
+    
+    /// Runs the function.
+    ///
+    /// The parameters set the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
+    public func perform(width: Int, height: Int = 1, depth: Int = 1) throws {
+        try self.perform(gridSize: MTLSize(width: width, height: height, depth: depth))
     }
     
     private enum Error: LocalizedError {
