@@ -127,6 +127,18 @@ public final class MetalManager {
     ///
     /// - Parameters:
     ///   - value: A pointer to the constant value.
+    public func setConstant(_ value: UInt) {
+        var _value = value
+        self.constants.setConstantValue(&_value, type: .uint, index: currentConstantIndex)
+        currentConstantIndex += 1
+    }
+    
+    /// Sets a value for a function constant.
+    ///
+    /// - Important: This method must be called in the same order as the constants.
+    ///
+    /// - Parameters:
+    ///   - value: A pointer to the constant value.
     public func setConstant(_ value: UInt8) {
         var _value = value
         self.constants.setConstantValue(&_value, type: .uchar, index: currentConstantIndex)
