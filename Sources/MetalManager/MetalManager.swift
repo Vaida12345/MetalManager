@@ -81,8 +81,8 @@ public final class MetalManager {
     /// - Parameters:
     ///   - name: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
-    public init(name: String, fileWithin bundle: Bundle = .main) throws {
-        guard let device = MTLCreateSystemDefaultDevice() else { throw Error.cannotCreateMetalDevice }
+    public init(name: String, fileWithin bundle: Bundle = .main, device: MTLDevice? = nil) throws {
+        guard let device = device ?? MTLCreateSystemDefaultDevice() else { throw Error.cannotCreateMetalDevice }
 #if os(iOS)
         guard device.supportsFeatureSet(.iOS_GPUFamily4_v1) else { throw Error.hardwareNotSupported }
 #endif
@@ -223,6 +223,13 @@ public final class MetalManager {
         return buffer
     }
     
+    public func setBuffer(_ buffer: any MTLBuffer) throws {
+        if commandBuffer == nil { try self.submitConstants() }
+        
+        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+        currentArrayIndex += 1
+    }
+    
     /// Sets a buffer for the compute function.
     ///
     /// Multiple input buffers can be set.
@@ -359,7 +366,7 @@ public final class MetalManager {
         try self.perform(gridSize: MTLSize(width: width, height: height, depth: depth))
     }
     
-    private enum Error: LocalizedError {
+    public enum Error: LocalizedError {
         
         case cannotCreateMetalDevice
         case cannotCreateMetalLibrary
@@ -369,9 +376,9 @@ public final class MetalManager {
         case invalidGridSize
         case hardwareNotSupported
         
-        var errorDescription: String? { "Metal Error" }
+        public var errorDescription: String? { "Metal Error" }
         
-        var failureReason: String? {
+        public var failureReason: String? {
             switch self {
             case .cannotCreateMetalDevice:
                 return "Cannot create metal device"
