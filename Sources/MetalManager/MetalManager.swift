@@ -36,42 +36,12 @@ import CoreML
 /// > - Any function defined in `Accelerate` significantly outperforms `Metal`.
 public final class MetalManager {
     
-    /// The `MTLDevice` used for calculation.
-    ///
-    /// - Note: The default value is `MTLCreateSystemDefaultDevice`.
-    private var device: MTLDevice
+    /// The sets of command associated with this metal manager.
+    private let commandBuffer: MTLCommandBuffer
     
-    /// The library for loading the `Metal` function.
-    ///
-    /// - Note: The default value is `device.makeDefaultLibrary()`.
-    private var library: MTLLibrary
+    private let pipelineState: MTLComputePipelineState
     
-    /// The constants which severs to pass the arguments at the top of the .metal file.
-    ///
-    /// - Note: You will need to modify this value to pass the constants.
-    ///
-    /// **Example**
-    /// ```swift
-    /// manager.constants.setConstantValue(&intA, type: MTLDataType.int, index: 0)
-    /// ```
-    private var constants: MTLFunctionConstantValues
-    
-    /// Defines the size which can be calculated in a batch. the three arguments represent the x, y, z dimensions.
-    ///
-    /// - Note: The default value is calculated by the `gridSize`.
-    public var threadsPerThreadGroup: MTLSize? = nil
-    
-    /// The name for the `Metal` function.
-    private let functionName: String
-    
-    private var metalFunction: MTLFunction?
-    private var pipelineState: MTLComputePipelineState?
-    private var commandQueue: MTLCommandQueue?
-    private var commandBuffer: MTLCommandBuffer?
-    private var commandEncoder: MTLComputeCommandEncoder?
-    
-    private var currentConstantIndex = 0
-    private var currentArrayIndex = 0
+    private let commandEncoder: MTLComputeCommandEncoder
     
     
     /// Initialize a `Metal` function with its name.
@@ -81,219 +51,140 @@ public final class MetalManager {
     /// - Parameters:
     ///   - name: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
-    public init(name: String, fileWithin bundle: Bundle = .main, device: MTLDevice? = nil) throws {
-        guard let device = device ?? MTLCreateSystemDefaultDevice() else { throw Error.cannotCreateMetalDevice }
+    public init(function: MetalArgumentFunction, at bundle: Bundle = .main) throws {
+        guard let device = MetalManager.Configuration.shared.computeDevice else { throw Error.cannotCreateMetalDevice }
+        
 #if os(iOS)
         guard device.supportsFeatureSet(.iOS_GPUFamily4_v1) else { throw Error.hardwareNotSupported }
 #endif
-        self.device = device
         
-        let library = try device.makeDefaultLibrary(bundle: bundle)
-        self.library = library
+        let library: MTLLibrary
+        if let _library = Cache.shared.libraries[bundle] {
+            library = _library
+        } else {
+            library = try device.makeDefaultLibrary(bundle: bundle)
+            library.label = "MTLLibrary(bundle: \(bundle))"
+            
+            Cache.shared.libraries[bundle] = library
+        }
         
-        self.functionName = name
-        self.constants = MTLFunctionConstantValues()
-    }
-    
-    /// Sets a value for a function constant.
-    ///
-    /// - Important: This method must be called in the same order as the constants.
-    ///
-    /// - Precondition: The index of constants in the `.metal` file must start with `0`.
-    ///
-    /// - Parameters:
-    ///   - value: A pointer to the constant value.
-    ///   - type: The data type of the function constant.
-    public func setConstant(_ value: UnsafeRawPointer, type: MTLDataType) {
-        self.constants.setConstantValue(value, type: type, index: currentConstantIndex)
-        currentConstantIndex += 1
-    }
-    
-    /// Sets a value for a function constant.
-    ///
-    /// - Important: This method must be called in the same order as the constants.
-    ///
-    /// - Parameters:
-    ///   - value: A pointer to the constant value.
-    public func setConstant(_ value: Int) {
-        var _value = value
-        self.constants.setConstantValue(&_value, type: .int, index: currentConstantIndex)
-        currentConstantIndex += 1
-    }
-    
-    /// Sets a value for a function constant.
-    ///
-    /// - Important: This method must be called in the same order as the constants.
-    ///
-    /// - Parameters:
-    ///   - value: A pointer to the constant value.
-    public func setConstant(_ value: UInt) {
-        var _value = value
-        self.constants.setConstantValue(&_value, type: .uint, index: currentConstantIndex)
-        currentConstantIndex += 1
-    }
-    
-    /// Sets a value for a function constant.
-    ///
-    /// - Important: This method must be called in the same order as the constants.
-    ///
-    /// - Parameters:
-    ///   - value: A pointer to the constant value.
-    public func setConstant(_ value: Bool) {
-        var _value = value
-        self.constants.setConstantValue(&_value, type: .bool, index: currentConstantIndex)
-        currentConstantIndex += 1
-    }
-    
-    /// Sets a value for a function constant.
-    ///
-    /// - Important: This method must be called in the same order as the constants.
-    ///
-    /// - Parameters:
-    ///   - value: A pointer to the constant value.
-    public func setConstant(_ value: UInt8) {
-        var _value: UInt8 = value
-        self.constants.setConstantValue(&_value, type: .uchar, index: currentConstantIndex)
-        currentConstantIndex += 1
-    }
-    
-    /// Sets a value for a function constant.
-    ///
-    /// - Important: This method must be called in the same order as the constants.
-    ///
-    /// - Parameters:
-    ///   - value: A pointer to the constant value.
-    public func setConstant(_ value: Float) {
-        var _value = value
-        self.constants.setConstantValue(&_value, type: .float, index: currentConstantIndex)
-        currentConstantIndex += 1
-    }
-    
-    /// Submits the constants and make command buffers.
-    ///
-    /// - Important: This method must be called after passing all the constants and before passing any array.
-    ///
-    /// - Important: You need to call this function even if no constants were passed.
-    private func submitConstants() throws {
         
-        // Call the metal function. The name is the function name.
-        self.metalFunction = try library.makeFunction(name: functionName, constantValues: constants)
+        if let pipeLine = Cache.shared.pipelineStates[function.function] {
+            self.pipelineState = pipeLine
+        } else {
+            let metalFunction = try function.function.makeFunction(library: library)
+            let pipe = try device.makeComputePipelineState(function: metalFunction)
+            Cache.shared.pipelineStates[function.function] = pipe
+            self.pipelineState = pipe
+        }
         
-        // creates the pipe would stores the calculation
-        self.pipelineState = try device.makeComputePipelineState(function: self.metalFunction!)
-        
-        // generate the buffers where the argument is stored in memory.
-        guard let commandQueue = device.makeCommandQueue() else { throw Error.cannotCreateMetalCommandQueue }
-        self.commandQueue = commandQueue
-        
-        guard let commandBuffer = self.commandQueue!.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
+        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
+        commandBuffer.label = "CommandBuffer(for: \(function.function.name))"
         self.commandBuffer = commandBuffer
         
-        guard let commandEncoder = self.commandBuffer!.makeComputeCommandEncoder() else { throw Error.cannotCreateMetalCommandEncoder }
-        self.commandEncoder = commandEncoder
-        self.commandEncoder!.setComputePipelineState(self.pipelineState!)
+        self.commandEncoder = try function.makeCommandEncoder(commandBuffer: commandBuffer, commandState: pipelineState)
     }
     
-    
-    /// Sets a buffer for the compute function.
-    ///
-    /// Multiple input buffers can be set.
-    ///
-    /// - Important: This method must be called in the same order as the arguments.
-    ///
-    /// - Note: The result buffer is managed by the Metal Framework.
-    ///
-    /// - Parameters:
-    ///   - input: The input array.
-    ///
-    /// - Returns: The encoded buffer, can be retained to obtain results.
-    @discardableResult
-    public func setBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
-        if commandBuffer == nil { try self.submitConstants() }
-        
-        guard let buffer = input.withUnsafeBufferPointer({ ptr in
-            self.device.makeBuffer(bytes: ptr.baseAddress!, length: input.count * MemoryLayout<Element>.stride, options: .storageModeShared)
-        }) else {
-            throw Error.cannotCreateMetalCommandBuffer
-        }
-        
-        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
-        currentArrayIndex += 1
-        
-        return buffer
-    }
-    
-    public func setBuffer(_ buffer: any MTLBuffer) throws {
-        if commandBuffer == nil { try self.submitConstants() }
-        
-        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
-        currentArrayIndex += 1
-    }
-    
-    /// Sets a buffer for the compute function.
-    ///
-    /// Multiple input buffers can be set.
-    ///
-    /// - Important: This method must be called in the same order as the arguments.
-    ///
-    /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
-    ///
-    /// - Parameters:
-    ///   - input: A pointer to the constant value.
-    ///   - length: The number of elements in this buffer.
-    ///
-    /// - Returns: The encoded buffer, can be retained to obtain results.
-    @discardableResult
-    public func setBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws -> MTLBuffer {
-        if commandBuffer == nil { try self.submitConstants() }
-        
-        guard let buffer = self.device.makeBuffer(bytes: input, length: length * MemoryLayout<Element>.size, options: .storageModeShared) else {
-            throw Error.cannotCreateMetalCommandBuffer
-        }
-        
-        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
-        currentArrayIndex += 1
-        return buffer
-    }
-    
-    /// Sets a buffer for the compute function.
-    ///
-    /// Multiple input buffers can be set.
-    ///
-    /// - Important: This method must be called in the same order as the arguments.
-    ///
-    /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
-    ///
-    /// - Important: The input buffer does not reflect the changes to the MTLBuffer.
-    ///
-    /// - Parameters:
-    ///   - input: A pointer to the constant value.
-    ///
-    /// - Returns: The encoded buffer, can be retained to obtain results.
-    @discardableResult
-    @inline(__always)
-    public func setBuffer<Element>(_ input: UnsafeMutableBufferPointer<Element>) throws -> MTLBuffer {
-        try self.setBuffer(input.baseAddress!, length: input.count)
-    }
-    
-    /// Sets the empty buffer, filled with `zero`, for the compute function.
-    ///
-    /// - Note: The result buffer is managed by the Metal Framework.
-    ///
-    /// - Parameters:
-    ///   - count: The number of elements in the output buffer.
-    ///   - type: The type of such buffer.
-    public func setEmptyBuffer<Element>(count: Int, type: Element.Type) throws -> MTLBuffer {
-        if commandBuffer == nil { try self.submitConstants() }
-        
-        guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<Element>.size, options: .storageModeShared) else {
-            throw Error.cannotCreateMetalCommandBuffer
-        }
-        
-        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
-        currentArrayIndex += 1
-        return buffer
-    }
+//    
+//    /// Sets a buffer for the compute function.
+//    ///
+//    /// Multiple input buffers can be set.
+//    ///
+//    /// - Important: This method must be called in the same order as the arguments.
+//    ///
+//    /// - Note: The result buffer is managed by the Metal Framework.
+//    ///
+//    /// - Parameters:
+//    ///   - input: The input array.
+//    ///
+//    /// - Returns: The encoded buffer, can be retained to obtain results.
+//    @discardableResult
+//    public func setBuffer<Element>(_ input: Array<Element>) throws -> MTLBuffer {
+//        if commandBuffer == nil { try self.submitConstants() }
+//        
+//        guard let buffer = input.withUnsafeBufferPointer({ ptr in
+//            self.device.makeBuffer(bytes: ptr.baseAddress!, length: input.count * MemoryLayout<Element>.stride, options: .storageModeShared)
+//        }) else {
+//            throw Error.cannotCreateMetalCommandBuffer
+//        }
+//        
+//        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+//        currentArrayIndex += 1
+//        
+//        return buffer
+//    }
+//    
+//    public func setBuffer(_ buffer: any MTLBuffer) throws {
+//        if commandBuffer == nil { try self.submitConstants() }
+//        
+//        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+//        currentArrayIndex += 1
+//    }
+//    
+//    /// Sets a buffer for the compute function.
+//    ///
+//    /// Multiple input buffers can be set.
+//    ///
+//    /// - Important: This method must be called in the same order as the arguments.
+//    ///
+//    /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
+//    ///
+//    /// - Parameters:
+//    ///   - input: A pointer to the constant value.
+//    ///   - length: The number of elements in this buffer.
+//    ///
+//    /// - Returns: The encoded buffer, can be retained to obtain results.
+//    @discardableResult
+//    public func setBuffer<Element>(_ input: UnsafeMutablePointer<Element>, length: Int) throws -> MTLBuffer {
+//        if commandBuffer == nil { try self.submitConstants() }
+//        
+//        guard let buffer = self.device.makeBuffer(bytes: input, length: length * MemoryLayout<Element>.size, options: .storageModeShared) else {
+//            throw Error.cannotCreateMetalCommandBuffer
+//        }
+//        
+//        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+//        currentArrayIndex += 1
+//        return buffer
+//    }
+//    
+//    /// Sets a buffer for the compute function.
+//    ///
+//    /// Multiple input buffers can be set.
+//    ///
+//    /// - Important: This method must be called in the same order as the arguments.
+//    ///
+//    /// - Note: The input buffer is copied, and must be deallocated manually later. The result buffer is managed by the Metal Framework.
+//    ///
+//    /// - Important: The input buffer does not reflect the changes to the MTLBuffer.
+//    ///
+//    /// - Parameters:
+//    ///   - input: A pointer to the constant value.
+//    ///
+//    /// - Returns: The encoded buffer, can be retained to obtain results.
+//    @discardableResult
+//    @inline(__always)
+//    public func setBuffer<Element>(_ input: UnsafeMutableBufferPointer<Element>) throws -> MTLBuffer {
+//        try self.setBuffer(input.baseAddress!, length: input.count)
+//    }
+//    
+//    /// Sets the empty buffer, filled with `zero`, for the compute function.
+//    ///
+//    /// - Note: The result buffer is managed by the Metal Framework.
+//    ///
+//    /// - Parameters:
+//    ///   - count: The number of elements in the output buffer.
+//    ///   - type: The type of such buffer.
+//    public func setEmptyBuffer<Element>(count: Int, type: Element.Type) throws -> MTLBuffer {
+//        if commandBuffer == nil { try self.submitConstants() }
+//        
+//        guard let buffer = self.device.makeBuffer(length: count * MemoryLayout<Element>.size, options: .storageModeShared) else {
+//            throw Error.cannotCreateMetalCommandBuffer
+//        }
+//        
+//        self.commandEncoder!.setBuffer(buffer, offset: 0, index: currentArrayIndex)
+//        currentArrayIndex += 1
+//        return buffer
+//    }
     
     /// Runs the function.
     ///
@@ -301,15 +192,11 @@ public final class MetalManager {
     ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
     public func perform(gridSize: MTLSize) throws {
         
-        guard let pipelineState, let commandBuffer, let commandEncoder else { fatalError("Make sure called `submitConstants` first.") }
-        
         if gridSize.height == 1 && gridSize.depth == 1 {
             commandEncoder.dispatchThreads(gridSize,
                                            threadsPerThreadgroup: MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup,
                                                                           height: 1,
                                                                           depth: 1))
-        } else if let threadsPerThreadGroup = threadsPerThreadGroup {
-            commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadGroup)
         } else {
             let normalize = { (_ input: Int) -> Int in
                 if input == 0 {
@@ -354,9 +241,13 @@ public final class MetalManager {
         }
         
         // Run the metal.
-        commandEncoder.endEncoding()
         commandBuffer.commit()
+        
+        let commit_date = Date()
         commandBuffer.waitUntilCompleted()
+        if #available(macOS 10.15, *) {
+            print("Actual Compute took \(commit_date.distance(to: Date()))")
+        }
     }
     
     /// Runs the function.
@@ -366,7 +257,7 @@ public final class MetalManager {
         try self.perform(gridSize: MTLSize(width: width, height: height, depth: depth))
     }
     
-    public enum Error: LocalizedError {
+    public enum Error: LocalizedError, CustomStringConvertible {
         
         case cannotCreateMetalDevice
         case cannotCreateMetalLibrary
@@ -387,7 +278,7 @@ public final class MetalManager {
             case .cannotCreateMetalCommandQueue:
                 return "Cannot create metal command queue"
             case .cannotCreateMetalCommandBuffer:
-                return "Cannot create metal command buffer"
+                return "Cannot create metal command buffer. Please check \"commandQueueLength\" in \"MetalManager.Configuration\"."
             case .cannotCreateMetalCommandEncoder:
                 return "Cannot create metal command encoder"
             case .invalidGridSize:
@@ -395,6 +286,10 @@ public final class MetalManager {
             case .hardwareNotSupported:
                 return "The hardware running this program is too old to support the feature required"
             }
+        }
+        
+        public var description: String {
+            self.errorDescription! + ": " + self.failureReason!
         }
     }
     
