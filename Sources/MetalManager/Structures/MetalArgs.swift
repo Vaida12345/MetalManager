@@ -10,23 +10,25 @@ import Metal
 
 public final class MetalArgumentFunction: MetalArgumentable {
     
-    public let function: MetalFunction
+    public let _function: MetalFunction
     
-    public let arguments: [Argument]
+    public let _arguments: [Argument]
     
     
     public func perform(width: Int, height: Int = 1, depth: Int = 1) throws {
-        let manager = try MetalManager(function: self, at: function.bundle)
+        let manager = try MetalManager(function: self, at: _function.bundle)
         try manager.perform(width: width, height: height, depth: depth)
     }
     
     func makeCommandEncoder(commandBuffer: MTLCommandBuffer, commandState: MTLComputePipelineState) throws -> MTLComputeCommandEncoder {
         guard let commandEncoder = commandBuffer.makeComputeCommandEncoder() else { throw MetalManager.Error.cannotCreateMetalCommandEncoder }
+        commandEncoder.label = "Encoder(for: \(_function.name))"
+        
         commandEncoder.setComputePipelineState(commandState)
         
         var textureCount = 0
         var bufferCount = 0
-        for argument in arguments {
+        for argument in _arguments {
             switch argument {
             case .texture(let texture):
                 commandEncoder.setTexture(texture, index: textureCount)
@@ -37,16 +39,13 @@ public final class MetalArgumentFunction: MetalArgumentable {
             }
         }
         
-        commandEncoder.endEncoding()
-        commandEncoder.label = "Encoder<Committed>(for: \(function.name))"
-        
         return commandEncoder
     }
     
     
     init(function: MetalFunction, arguments: [Argument]) {
-        self.function = function
-        self.arguments = arguments
+        self._function = function
+        self._arguments = arguments
     }
     
     
@@ -60,9 +59,9 @@ public final class MetalArgumentFunction: MetalArgumentable {
 
 public protocol MetalArgumentable {
     
-    var function: MetalFunction { get }
+    var _function: MetalFunction { get }
     
-    var arguments: [MetalArgumentFunction.Argument] { get }
+    var _arguments: [MetalArgumentFunction.Argument] { get }
     
 }
 
@@ -70,11 +69,11 @@ public protocol MetalArgumentable {
 public extension MetalArgumentable {
     
     consuming func argument(buffer: any MTLBuffer) -> MetalArgumentFunction {
-        MetalArgumentFunction(function: self.function, arguments: self.arguments + [.buffer(buffer)])
+        MetalArgumentFunction(function: self._function, arguments: self._arguments + [.buffer(buffer)])
     }
     
     consuming func argument(texture: any MTLTexture) -> MetalArgumentFunction {
-        MetalArgumentFunction(function: self.function, arguments: self.arguments + [.texture(texture)])
+        MetalArgumentFunction(function: self._function, arguments: self._arguments + [.texture(texture)])
     }
     
 }

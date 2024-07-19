@@ -99,12 +99,12 @@ public final class MetalFunction: Hashable, MetalArgumentable {
     }
     
     @inlinable
-    public var arguments: [MetalArgumentFunction.Argument] {
+    public var _arguments: [MetalArgumentFunction.Argument] {
         []
     }
     
     @inlinable
-    public var function: MetalFunction {
+    public var _function: MetalFunction {
         self
     }
     

@@ -69,17 +69,17 @@ public final class MetalManager {
         }
         
         
-        if let pipeLine = Cache.shared.pipelineStates[function.function] {
+        if let pipeLine = Cache.shared.pipelineStates[function._function] {
             self.pipelineState = pipeLine
         } else {
-            let metalFunction = try function.function.makeFunction(library: library)
+            let metalFunction = try function._function.makeFunction(library: library)
             let pipe = try device.makeComputePipelineState(function: metalFunction)
-            Cache.shared.pipelineStates[function.function] = pipe
+            Cache.shared.pipelineStates[function._function] = pipe
             self.pipelineState = pipe
         }
         
         guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
-        commandBuffer.label = "CommandBuffer(for: \(function.function.name))"
+        commandBuffer.label = "CommandBuffer(for: \(function._function.name))"
         self.commandBuffer = commandBuffer
         
         self.commandEncoder = try function.makeCommandEncoder(commandBuffer: commandBuffer, commandState: pipelineState)
@@ -193,57 +193,30 @@ public final class MetalManager {
     public func perform(gridSize: MTLSize) throws {
         
         if gridSize.height == 1 && gridSize.depth == 1 {
-            commandEncoder.dispatchThreads(gridSize,
-                                           threadsPerThreadgroup: MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup,
-                                                                          height: 1,
-                                                                          depth: 1))
+            let threadsPerThreadgroup = MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
+            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
+                                              height: 1,
+                                              depth: 1)
+            
+            commandEncoder.dispatchThreads(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
         } else {
-            let normalize = { (_ input: Int) -> Int in
-                if input == 0 {
-                    return 1
-                } else {
-                    return input
-                }
-            }
+            let width = Int(sqrt(Double(pipelineState.maxTotalThreadsPerThreadgroup)))
+            let threadsPerThreadgroup = MTLSize(width: width, height: width, depth: 1)
+            let threadgroupsPerGrid = MTLSize(
+                width: (gridSize.width + width - 1) / width,
+                height: (gridSize.height + width - 1) / width,
+                depth: gridSize.depth
+            )
             
-            let maxBatchSize = Double(pipelineState.maxTotalThreadsPerThreadgroup)
-            let factor = pow(maxBatchSize / Double(normalize(gridSize.width) * normalize(gridSize.height) * normalize(gridSize.depth)), 1 / 3)
-            var preSize = [Double(gridSize.width) * factor, Double(gridSize.height) * factor, Double(gridSize.depth) * factor]
-            
-            if preSize[0] < 1 { preSize[0] = 1 }
-            if preSize[1] < 1 { preSize[1] = 1 }
-            if preSize[2] < 1 { preSize[2] = 1 }
-            
-            if preSize[0] == 1 && preSize[1] == 1 {
-                preSize[2] = maxBatchSize
-            } else if preSize[0] == 1 && preSize[2] == 1 {
-                preSize[1] = maxBatchSize
-            } else if preSize[1] == 1 && preSize[2] == 1 {
-                preSize[0] = maxBatchSize
-            } else if preSize[0] == 1 {
-                let factor = sqrt(maxBatchSize / (Double(normalize(gridSize.height) * normalize(gridSize.depth))))
-                preSize[1] = Double(gridSize.height) * factor
-                preSize[2] = Double(gridSize.depth) * factor
-            } else if preSize[1] == 1 {
-                let factor = sqrt(maxBatchSize / (Double(normalize(gridSize.width) * normalize(gridSize.depth))))
-                preSize[0] = Double(gridSize.width) * factor
-                preSize[2] = Double(gridSize.depth) * factor
-            } else if preSize[2] == 1 {
-                let factor = sqrt(maxBatchSize / (Double(normalize(gridSize.width) * normalize(gridSize.height))))
-                preSize[0] = Double(gridSize.width) * factor
-                preSize[1] = Double(gridSize.height) * factor
-            }
-            
-            commandEncoder.dispatchThreads(gridSize, 
-                                           threadsPerThreadgroup: MTLSize(width: min(Int(preSize[0]), gridSize.width),
-                                                                          height: min(Int(preSize[1]), gridSize.height),
-                                                                          depth: min(Int(preSize[2]), gridSize.depth)))
+            commandEncoder.dispatchThreads(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
         }
         
         // Run the metal.
+        commandEncoder.endEncoding()
         commandBuffer.commit()
         
         let commit_date = Date()
+        print("Start to compute")
         commandBuffer.waitUntilCompleted()
         if #available(macOS 10.15, *) {
             print("Actual Compute took \(commit_date.distance(to: Date()))")
