@@ -6,6 +6,7 @@
 //
 
 import Metal
+import CoreGraphics
 
 
 public final class MetalArgumentFunction: MetalArgumentable {
@@ -36,8 +37,13 @@ public final class MetalArgumentFunction: MetalArgumentable {
             case .buffer(let buffer):
                 commandEncoder.setBuffer(buffer, offset: 0, index: bufferCount)
                 bufferCount += 1
+            case let .bytes(bytes, length):
+                var bytes = bytes
+                commandEncoder.setBytes(&bytes, length: length, index: bufferCount)
+                bufferCount += 1
             }
         }
+        commandEncoder.label = "Encoder(for: \(_function.name), textureCount: \(textureCount), bufferCount: \(bufferCount))"
         
         return commandEncoder
     }
@@ -52,6 +58,7 @@ public final class MetalArgumentFunction: MetalArgumentable {
     public enum Argument {
         case texture(any MTLTexture)
         case buffer(any MTLBuffer)
+        case bytes(Any, length: Int)
     }
     
 }
@@ -72,8 +79,18 @@ public extension MetalArgumentable {
         MetalArgumentFunction(function: self._function, arguments: self._arguments + [.buffer(buffer)])
     }
     
+    consuming func argument<T>(bytes: T) -> MetalArgumentFunction {
+        let length = MemoryLayout<T>.size
+        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.bytes(bytes, length: length)])
+    }
+    
     consuming func argument(texture: any MTLTexture) -> MetalArgumentFunction {
         MetalArgumentFunction(function: self._function, arguments: self._arguments + [.texture(texture)])
+    }
+    
+    consuming func argument(texture image: CGImage, textureUsage: MTLTextureUsage) throws -> MetalArgumentFunction {
+        let texture = try MetalManager.Configuration.shared.textureLoader.newTexture(cgImage: image, textureUsage: textureUsage)
+        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.texture(texture)])
     }
     
 }

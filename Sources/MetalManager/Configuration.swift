@@ -6,6 +6,7 @@
 //
 
 import Metal
+import MetalKit
 
 
 extension MetalManager {
@@ -13,10 +14,12 @@ extension MetalManager {
     public struct Configuration {
         
         /// The default compute device for texture / buffer allocation, library creation, computation, and more.
-        public var computeDevice = MTLCreateSystemDefaultDevice()
+        public lazy var computeDevice = MTLCreateSystemDefaultDevice()!
         
         /// The number of command queues that the main command queue can hold.
         public var commandQueueLength: Int = 4
+        
+        public lazy var textureLoader = MTKTextureLoader(device: self.computeDevice)
         
         
         nonisolated(unsafe) public static var shared = Configuration()

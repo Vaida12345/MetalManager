@@ -52,7 +52,7 @@ public final class MetalManager {
     ///   - name: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
     public init(function: MetalArgumentFunction, at bundle: Bundle = .main) throws {
-        guard let device = MetalManager.Configuration.shared.computeDevice else { throw Error.cannotCreateMetalDevice }
+        let device = MetalManager.Configuration.shared.computeDevice
         
 #if os(iOS)
         guard device.supportsFeatureSet(.iOS_GPUFamily4_v1) else { throw Error.hardwareNotSupported }
@@ -191,6 +191,18 @@ public final class MetalManager {
     /// - Parameters:
     ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
     public func perform(gridSize: MTLSize) throws {
+        let supportsNonuniform: Bool
+        
+        if #available(macOS 10.15, *) {
+            if MetalManager.Configuration.shared.computeDevice.supportsFamily(.apple4) {
+                supportsNonuniform = true
+            } else {
+                supportsNonuniform = false
+            }
+        } else {
+            supportsNonuniform = false
+        }
+        
         
         if gridSize.height == 1 && gridSize.depth == 1 {
             let threadsPerThreadgroup = MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
@@ -198,17 +210,22 @@ public final class MetalManager {
                                               height: 1,
                                               depth: 1)
             
-            commandEncoder.dispatchThreads(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
+            if supportsNonuniform {
+                commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
+            } else {
+                commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
+            }
         } else {
-            let width = Int(sqrt(Double(pipelineState.maxTotalThreadsPerThreadgroup)))
-            let threadsPerThreadgroup = MTLSize(width: width, height: width, depth: 1)
-            let threadgroupsPerGrid = MTLSize(
-                width: (gridSize.width + width - 1) / width,
-                height: (gridSize.height + width - 1) / width,
-                depth: gridSize.depth
-            )
+            let threadsPerThreadgroup = MTLSize(width: 16, height: 16, depth: 1)
+            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + 15) / 16,
+                                              height: (gridSize.height + 15) / 16,
+                                              depth: 1)
             
-            commandEncoder.dispatchThreads(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
+            if supportsNonuniform {
+                commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
+            } else {
+                commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
+            }
         }
         
         // Run the metal.

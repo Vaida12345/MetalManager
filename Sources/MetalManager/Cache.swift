@@ -17,7 +17,7 @@ final class Cache {
     
     var pipelineStates: [MetalFunction : MTLComputePipelineState] = [:]
     
-    lazy var commandQueue: MTLCommandQueue! = MetalManager.Configuration.shared.computeDevice!.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)
+    lazy var commandQueue: MTLCommandQueue = MetalManager.Configuration.shared.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
     
     
     nonisolated(unsafe) static let shared = Cache()
