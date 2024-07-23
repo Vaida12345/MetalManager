@@ -10,19 +10,6 @@ import MetalKit
 import MetalPerformanceShaders
 
 
-extension MTKTextureLoader {
-    
-    /// Synchronously loads image data and creates a new Metal texture from a given bitmap image.
-    public func newTexture(
-        cgImage: CGImage,
-        textureUsage: MTLTextureUsage
-    ) throws -> any MTLTexture {
-        try self.newTexture(cgImage: cgImage, options: [.textureUsage : textureUsage.rawValue, .origin : MTKTextureLoader.Origin.topLeft])
-    }
-    
-}
-
-
 extension MTLTextureUsage {
     
     /// A read-write texture.
@@ -35,25 +22,52 @@ extension MTLTextureUsage {
 }
 
 
+extension UnsafeMutableBufferPointer {
+    
+    /// Creates a MTLBuffer from the given pointer.
+    ///
+    /// - Note: The default ``MetalManager/Configuration/computeDevice`` would be used to create such buffer.
+    public func makeMTLBuffer() -> any MTLBuffer {
+        MetalManager.Configuration.shared.computeDevice.makeBuffer(bytes: self.baseAddress!, length: self.count * MemoryLayout<Element>.stride, options: .storageModeShared)!
+    }
+    
+}
+
+
 extension CGImage {
     
-    public func makeTexture() -> any MTLTexture {
-        let image = MPSImage(
-            device: MetalManager.Configuration.shared.computeDevice,
-            imageDescriptor: MPSImageDescriptor(
-                channelFormat: .unorm8,
-                width: self.width,
-                height: self.height,
-                featureChannels: 4
+    /// Creates a MTLTexture from CGImage.
+    ///
+    /// The located texture is in `rgba8Unorm`, which indicates that each pixel has a red, green, blue, and alpha channel, where each channel is an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0).
+    ///
+    /// - Note: The default ``MetalManager/Configuration/computeDevice`` would be used to create such texture.
+    public func makeTexture(usage: MTLTextureUsage) throws -> any MTLTexture {
+        let descriptor = MTLTextureDescriptor()
+        descriptor.pixelFormat = .rgba8Unorm
+        descriptor.width = self.width
+        descriptor.height = self.height
+        descriptor.usage = usage
+        descriptor.storageMode = .shared
+        
+        guard let texture = MetalManager.Configuration.shared.computeDevice.makeTexture(descriptor: descriptor) else {
+            throw MetalManager.Error.cannotCreateTextureFromImage
+        }
+        
+        let data = self.dataProvider!.data! as Data
+        
+        data.withUnsafeBytes { bytes in
+            texture.replace(
+                region: MTLRegion(
+                    origin: MTLOrigin(x: 0, y: 0, z: 0),
+                    size: MTLSize(width: self.width, height: self.height, depth: 1)
+                ),
+                mipmapLevel: 0,
+                withBytes: bytes,
+                bytesPerRow: self.bytesPerRow
             )
-        )
+        }
         
-        let context = CGContext(data: nil, width: self.width, height: self.height, bitsPerComponent: self.bitsPerComponent, bytesPerRow: self.bytesPerRow, space: self.colorSpace!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(self, in: CGRect(x: 0, y: 0, width: self.width, height: self.height))
-        
-        image.writeBytes(context.data!, dataLayout: .HeightxWidthxFeatureChannels, imageIndex: 0)
-        
-        return image.texture
+        return texture
     }
     
 }
@@ -61,17 +75,8 @@ extension CGImage {
 
 extension MTLTexture {
     
-    public func makeCGImage() -> CGImage? {
-//        let context = CIContext()
-//        let date = Date()
-//        let ciImage = CIImage(mtlTexture: self)!
-//        if #available(macOS 10.15, *) {
-//            print(date.distance(to: Date()), "make CIIMage")
-//        } else {
-//            // Fallback on earlier versions
-//        }
-//        return context.createCGImage(ciImage, from: ciImage.extent)
-//        
+    /// Creates a `CGImage` from the texture.
+    public func makeCGImage(colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> CGImage? {
         
         let width = self.width
         let height = self.height
@@ -90,7 +95,7 @@ extension MTLTexture {
                                     bitsPerComponent: 8,
                                     bitsPerPixel: 32,
                                     bytesPerRow: rowBytes,
-                                    space: CGColorSpaceCreateDeviceRGB(),
+                                    space: colorSpace,
                                     bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
                                     provider: provider,
                                     decode: nil,

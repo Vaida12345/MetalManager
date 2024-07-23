@@ -253,6 +253,7 @@ public final class MetalManager {
         case cannotCreateMetalLibrary
         case cannotCreateMetalCommandQueue
         case cannotCreateMetalCommandBuffer
+        case cannotCreateTextureFromImage
         case cannotCreateMetalCommandEncoder
         case invalidGridSize
         case hardwareNotSupported
@@ -275,6 +276,8 @@ public final class MetalManager {
                 return "Invalid metal grid size"
             case .hardwareNotSupported:
                 return "The hardware running this program is too old to support the feature required"
+            case .cannotCreateTextureFromImage:
+                return "Cannot create a MTLTexture from the given CGImage."
             }
         }
         

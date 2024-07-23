@@ -75,22 +75,22 @@ public protocol MetalArgumentable {
 
 public extension MetalArgumentable {
     
+    /// Binds a buffer to the buffer argument table, allowing compute kernels to access its data on the GPU.
     consuming func argument(buffer: any MTLBuffer) -> MetalArgumentFunction {
         MetalArgumentFunction(function: self._function, arguments: self._arguments + [.buffer(buffer)])
     }
     
+    /// Copies data directly to the GPU to populate an entry in the buffer argument table.
+    ///
+    /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
     consuming func argument<T>(bytes: T) -> MetalArgumentFunction {
         let length = MemoryLayout<T>.size
         return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.bytes(bytes, length: length)])
     }
     
+    /// Binds a texture to the texture argument table, allowing compute kernels to access its data on the GPU.
     consuming func argument(texture: any MTLTexture) -> MetalArgumentFunction {
         MetalArgumentFunction(function: self._function, arguments: self._arguments + [.texture(texture)])
-    }
-    
-    consuming func argument(texture image: CGImage, textureUsage: MTLTextureUsage) throws -> MetalArgumentFunction {
-        let texture = try MetalManager.Configuration.shared.textureLoader.newTexture(cgImage: image, textureUsage: textureUsage)
-        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.texture(texture)])
     }
     
 }

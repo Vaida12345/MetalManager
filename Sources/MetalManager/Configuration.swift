@@ -19,8 +19,6 @@ extension MetalManager {
         /// The number of command queues that the main command queue can hold.
         public var commandQueueLength: Int = 4
         
-        public lazy var textureLoader = MTKTextureLoader(device: self.computeDevice)
-        
         
         nonisolated(unsafe) public static var shared = Configuration()
         
