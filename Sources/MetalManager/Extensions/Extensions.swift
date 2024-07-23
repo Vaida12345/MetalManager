@@ -29,7 +29,7 @@ extension MTLTexture {
         
         let width = self.width
         let height = self.height
-        let rowBytes = width * 4 // assuming 4 channels (BGRA)
+        let rowBytes = width * 4 // assuming 4 channels (RGBA)
         
         guard let dataPtr = malloc(width * height * 4) else {
             return nil

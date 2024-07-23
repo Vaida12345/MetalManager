@@ -49,14 +49,14 @@ extension MTLDevice {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
         }
         
-        withUnsafePointer(to: data) { bytes in
+        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
             texture.replace(
                 region: MTLRegion(
                     origin: MTLOrigin(x: 0, y: 0, z: 0),
                     size: MTLSize(width: image.width, height: image.height, depth: 1)
                 ),
                 mipmapLevel: 0,
-                withBytes: bytes,
+                withBytes: bytes.baseAddress!,
                 bytesPerRow: image.bytesPerRow
             )
         }
