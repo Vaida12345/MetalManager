@@ -49,9 +49,9 @@ public final class MetalManager {
     /// Please specify `bundle` as `.bundle` when defining in swift package. The bundle needs to be included when distributing a command line tool.
     ///
     /// - Parameters:
-    ///   - name: The name of the metal function, as defined in the `.metal` file.
+    ///   - function: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
-    public init(function: MetalArgumentFunction, at bundle: Bundle = .main) throws {
+    public init(function: MetalArgumentFunction, at bundle: Bundle) throws {
         let device = MetalManager.Configuration.shared.computeDevice
         
 #if os(iOS)
