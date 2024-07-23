@@ -16,8 +16,8 @@ public final class MetalArgumentFunction: MetalArgumentable {
     public let _arguments: [Argument]
     
     
-    public func perform(width: Int, height: Int = 1, depth: Int = 1) throws {
-        let manager = try MetalManager(function: self, at: _function.bundle)
+    public func perform(width: Int, height: Int = 1, depth: Int = 1) async throws {
+        let manager = try await MetalManager(function: self, at: _function.bundle)
         try manager.perform(width: width, height: height, depth: depth)
     }
     

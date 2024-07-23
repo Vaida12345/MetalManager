@@ -6,10 +6,10 @@
 //
 
 import Foundation
-import Metal
+@preconcurrency import Metal
 
 
-public final class MetalFunction: Hashable, MetalArgumentable {
+public final class MetalFunction: Hashable, MetalArgumentable, @unchecked Sendable {
     
     let name: String
     
@@ -37,8 +37,8 @@ public final class MetalFunction: Hashable, MetalArgumentable {
         MetalFunction(name: self.name, constants: self.constants + [(value, type, hash)], bundle: self.bundle)
     }
     
-    internal func makeFunction(library: MTLLibrary) throws -> MTLFunction {
-        if let function = Cache.shared.functions[self] {
+    internal func makeFunction(library: MTLLibrary) async throws -> MTLFunction {
+        if let function = await Cache.shared.function(for: self) {
             return function
         }
         
@@ -56,7 +56,7 @@ public final class MetalFunction: Hashable, MetalArgumentable {
         guard let function else { throw Error.cannotCreateFunction(name: self.name) }
         
         function.label = "Function<\(self.name)>(constants: \(self.constants))"
-        Cache.shared.functions[self] = function
+        await Cache.shared.set(function: function, key: self)
         
         return function
     }

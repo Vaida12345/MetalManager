@@ -6,10 +6,10 @@ import PackageDescription
 let package = Package (
     name: "MetalManager",
     platforms: [
-        .iOS(.v12),
-        .macOS(.v10_13),
-        .macCatalyst(.v13),
-        .tvOS(.v12),
+        .iOS(.v14),
+        .macOS(.v10_15),
+        .macCatalyst(.v14),
+        .tvOS(.v14),
         .visionOS(.v1)
     ], products: [
         .library(name: "MetalManager", targets: ["MetalManager"]),

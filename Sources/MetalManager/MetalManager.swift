@@ -8,7 +8,7 @@
 
 
 #if !os(watchOS)
-import CoreML
+@preconcurrency import CoreML
 
 
 /// A manager for `Metal` Calculation.
@@ -51,7 +51,7 @@ public final class MetalManager {
     /// - Parameters:
     ///   - function: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
-    public init(function: MetalArgumentFunction, at bundle: Bundle) throws {
+    public init(function: MetalArgumentFunction, at bundle: Bundle) async throws {
         let device = MetalManager.Configuration.shared.computeDevice
         
 #if os(iOS)
@@ -59,26 +59,26 @@ public final class MetalManager {
 #endif
         
         let library: MTLLibrary
-        if let _library = Cache.shared.libraries[bundle] {
+        if let _library = await Cache.shared.library(for: bundle) {
             library = _library
         } else {
             library = try device.makeDefaultLibrary(bundle: bundle)
             library.label = "MTLLibrary(bundle: \(bundle))"
             
-            Cache.shared.libraries[bundle] = library
+            await Cache.shared.set(library: library, key: bundle)
         }
         
         
-        if let pipeLine = Cache.shared.pipelineStates[function._function] {
+        if let pipeLine = await Cache.shared.pipelineState(for: function._function) {
             self.pipelineState = pipeLine
         } else {
-            let metalFunction = try function._function.makeFunction(library: library)
-            let pipe = try device.makeComputePipelineState(function: metalFunction)
-            Cache.shared.pipelineStates[function._function] = pipe
+            let metalFunction = try await function._function.makeFunction(library: library)
+            let pipe = try await device.makeComputePipelineState(function: metalFunction)
+            await Cache.shared.set(pipelineState: pipe, key: function._function)
             self.pipelineState = pipe
         }
         
-        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
+        guard let commandBuffer = await Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
         commandBuffer.label = "CommandBuffer(for: \(function._function.name))"
         self.commandBuffer = commandBuffer
         

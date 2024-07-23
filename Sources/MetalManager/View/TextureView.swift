@@ -9,7 +9,6 @@ import SwiftUI
 import MetalKit
 
 
-@available(macOS 10.15, *)
 public struct TextureView: NSViewRepresentable {
     
     let texture: MTLTexture
@@ -18,7 +17,7 @@ public struct TextureView: NSViewRepresentable {
     
     
     public func makeCoordinator() -> Coordinator {
-        Coordinator()
+        Coordinator(cache: Coordinator.Cache())
     }
     
     public func makeNSView(context: Context) -> MTKView {
@@ -64,6 +63,8 @@ public struct TextureView: NSViewRepresentable {
         
         var pipelineState: MTLRenderPipelineState?
         
+        let cache: Cache
+        
         
         @MainActor func setupPipeline(view: MTKView) {
             guard let device = view.device else { return }
@@ -73,27 +74,27 @@ public struct TextureView: NSViewRepresentable {
             let fragmentFunction: any MTLFunction
             
             if device.isEqual(MetalManager.Configuration.shared.computeDevice) {
-                if let _library = Cache.shared.libraries[Bundle.module] {
+                if let _library = cache.libraries[Bundle.module] {
                     library = _library
                 } else {
                     library = try! device.makeDefaultLibrary(bundle: .module)
-                    Cache.shared.libraries[Bundle.module] = library
+                    cache.libraries[Bundle.module] = library
                 }
                 
                 let _vertex = MetalFunction(name: "textureView_vertex", bundle: .module)
-                if let _vertexFunction = Cache.shared.functions[_vertex] {
+                if let _vertexFunction = cache.functions[_vertex] {
                     vertexFunction = _vertexFunction
                 } else {
                     vertexFunction = library.makeFunction(name: "textureView_vertex")!
-                    Cache.shared.functions[_vertex] = vertexFunction
+                    cache.functions[_vertex] = vertexFunction
                 }
                 
                 let _fragment = MetalFunction(name: "textureView_fragment", bundle: .module)
-                if let _fragmentFunction = Cache.shared.functions[_fragment] {
+                if let _fragmentFunction = cache.functions[_fragment] {
                     fragmentFunction = _fragmentFunction
                 } else {
                     fragmentFunction = library.makeFunction(name: "textureView_fragment")!
-                    Cache.shared.functions[_fragment] = fragmentFunction
+                    cache.functions[_fragment] = fragmentFunction
                 }
             } else {
                 library = try! device.makeDefaultLibrary(bundle: .module)
@@ -167,7 +168,30 @@ public struct TextureView: NSViewRepresentable {
             commandBuffer.present(drawable)
             commandBuffer.commit()
         }
+        
+        @MainActor
+        final class Cache {
+            
+            var libraries: [Bundle : MTLLibrary] = [:]
+            
+            var functions: [MetalFunction : MTLFunction] = [:]
+            
+            var pipelineStates: [MetalFunction : MTLComputePipelineState] = [:]
+            
+            lazy var commandQueue: MTLCommandQueue = MetalManager.Configuration.shared.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
+            
+            
+            init() {
+            }
+        }
+        
+        init(texture: MTLTexture? = nil, pipelineState: MTLRenderPipelineState? = nil, cache: Cache) {
+            self.texture = texture
+            self.pipelineState = pipelineState
+            self.cache = cache
+        }
     }
+
 }
 
 @available(macOS 10.15, *)

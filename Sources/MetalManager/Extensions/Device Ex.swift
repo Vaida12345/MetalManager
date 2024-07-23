@@ -23,9 +23,11 @@ extension MTLDevice {
         bytes buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = []
     ) throws -> any MTLBuffer {
-        guard let buffer = self.makeBuffer(bytes: buffer.baseAddress!, length: buffer.count * MemoryLayout<T>.stride, options: options) else {
+        let label =  "copied from \(buffer.debugDescription)"
+        guard let buffer = self.makeBuffer(bytes: buffer.baseAddress!, length: buffer.count &* MemoryLayout<T>.stride, options: options) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
         }
+        buffer.label = label
         
         return buffer
     }
@@ -37,14 +39,31 @@ extension MTLDevice {
     ///   - options: An `MTLResourceOptions` instance that sets the buffer’s storage and hazard-tracking modes. The default one is `storageModeShared` for Apple Silicons.
     ///   - deallocator: A block the framework invokes when it deallocates the buffer so that your app can release the underlying memory; otherwise nil to opt out.
     @inline(__always)
-    func makeBuffer<T>(
+    public func makeBuffer<T>(
         bytesNoCopy buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = [],
         deallocator: ((UnsafeMutableRawPointer, Int) -> Void)?
     ) throws -> any MTLBuffer {
-        guard let buffer = self.makeBuffer(bytesNoCopy: buffer.baseAddress!, length: buffer.count * MemoryLayout<T>.stride, options: options, deallocator: deallocator) else {
+        let label = "no copy from \(buffer.debugDescription)"
+        guard let buffer = self.makeBuffer(bytesNoCopy: buffer.baseAddress!, length: buffer.count &* MemoryLayout<T>.stride, options: options, deallocator: deallocator) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
         }
+        buffer.label = label
+        
+        return buffer
+    }
+    
+    /// Creates a buffer the method clears with zero values.
+    @inline(__always)
+    public func makeBuffer<T>(
+        of type: T,
+        count: Int,
+        options: MTLResourceOptions = []
+    ) throws -> any MTLBuffer {
+        guard let buffer = self.makeBuffer(length: MemoryLayout<T>.stride &* count, options: options) else {
+            throw MetalResourceCreationError.cannotCreateBuffer(source: "(type \(type), count: \(count))")
+        }
+        buffer.label = "empty from (type \(type), count: \(count))"
         
         return buffer
     }
@@ -64,6 +83,7 @@ extension MTLDevice {
         guard let texture = MetalManager.Configuration.shared.computeDevice.makeTexture(descriptor: descriptor) else {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotCreateEmptyTexture)
         }
+        texture.label = "Texture from \(image)"
         
         guard let data = image.dataProvider?.data as? Data else {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
