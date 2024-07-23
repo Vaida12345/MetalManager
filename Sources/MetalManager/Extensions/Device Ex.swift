@@ -15,7 +15,7 @@ extension MTLDevice {
     ///
     /// - Parameters:
     ///   - buffer: A pointer to the starting memory address the method copies the initialization data from.
-    ///   - options: An `MTLResourceOptions` instance that sets the buffer’s storage and hazard-tracking modes. The default one uses `storageModeShared` for Apple Silicons.
+    ///   - options: An `MTLResourceOptions` instance that sets the buffer’s storage and hazard-tracking modes. The default one is `storageModeShared` for Apple Silicons.
     ///
     /// - throws: ``MetalResourceCreationError/cannotCreateBuffer(source:)``
     @inline(__always)
@@ -30,9 +30,29 @@ extension MTLDevice {
         return buffer
     }
     
+    /// Creates a buffer that wraps an existing contiguous memory allocation.
+    ///
+    /// - Parameters:
+    ///   - buffer: A page-aligned pointer to the starting memory address.
+    ///   - options: An `MTLResourceOptions` instance that sets the buffer’s storage and hazard-tracking modes. The default one is `storageModeShared` for Apple Silicons.
+    ///   - deallocator: A block the framework invokes when it deallocates the buffer so that your app can release the underlying memory; otherwise nil to opt out.
+    @inline(__always)
+    func makeBuffer<T>(
+        bytesNoCopy buffer: UnsafeMutableBufferPointer<T>,
+        options: MTLResourceOptions = [],
+        deallocator: ((UnsafeMutableRawPointer, Int) -> Void)?
+    ) throws -> any MTLBuffer {
+        guard let buffer = self.makeBuffer(bytesNoCopy: buffer.baseAddress!, length: buffer.count * MemoryLayout<T>.stride, options: options, deallocator: deallocator) else {
+            throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
+        }
+        
+        return buffer
+    }
+    
     /// Creates a MTLTexture from CGImage.
     ///
     /// The located texture is in `rgba8Unorm`, which indicates that each pixel has a red, green, blue, and alpha channel, where each channel is an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0).
+    @inlinable
     public func makeTexture(from image: CGImage, usage: MTLTextureUsage) throws -> any MTLTexture {
         let descriptor = MTLTextureDescriptor()
         descriptor.pixelFormat = .rgba8Unorm
