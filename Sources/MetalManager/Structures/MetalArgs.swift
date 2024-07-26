@@ -18,7 +18,7 @@ public final class MetalArgumentFunction: MetalArgumentable {
     
     public func perform(width: Int, height: Int = 1, depth: Int = 1) async throws {
         let manager = try await MetalManager(function: self, at: _function.bundle)
-        try manager.perform(width: width, height: height, depth: depth)
+        try await manager.perform(width: width, height: height, depth: depth)
     }
     
     func makeCommandEncoder(commandBuffer: MTLCommandBuffer, commandState: MTLComputePipelineState) throws -> MTLComputeCommandEncoder {

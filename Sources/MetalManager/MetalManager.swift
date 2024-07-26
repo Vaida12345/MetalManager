@@ -190,7 +190,7 @@ public final class MetalManager {
     ///
     /// - Parameters:
     ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
-    public func perform(gridSize: MTLSize) throws {
+    public func perform(gridSize: MTLSize) async throws {
         let supportsNonuniform: Bool
         
         if #available(macOS 10.15, *) {
@@ -243,8 +243,8 @@ public final class MetalManager {
     /// Runs the function.
     ///
     /// The parameters set the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
-    public func perform(width: Int, height: Int = 1, depth: Int = 1) throws {
-        try self.perform(gridSize: MTLSize(width: width, height: height, depth: depth))
+    public func perform(width: Int, height: Int = 1, depth: Int = 1) async throws {
+        try await self.perform(gridSize: MTLSize(width: width, height: height, depth: depth))
     }
     
     public enum Error: LocalizedError, CustomStringConvertible {

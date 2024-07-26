@@ -147,7 +147,7 @@ public struct TextureView: NSViewRepresentable {
             let vertices: [Float] = [
                 -1, -1, 0, 1, 0, 1,  // Vertex 1: position (-1, -1) and texture coordinate (0, 1)
                  1, -1, 0, 1, 1, 1,  // Vertex 2: position ( 1, -1) and texture coordinate (1, 1)
-                 -1,  1, 0, 1, 0, 0,  // Vertex 3: position (-1,  1) and texture coordinate (0, 0)
+                -1,  1, 0, 1, 0, 0,  // Vertex 3: position (-1,  1) and texture coordinate (0, 0)
                  1,  1, 0, 1, 1, 0   // Vertex 4: position ( 1,  1) and texture coordinate (1, 0)
             ]
             
