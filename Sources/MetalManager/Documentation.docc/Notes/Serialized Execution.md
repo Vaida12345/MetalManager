@@ -37,7 +37,7 @@ Define the buffers
 
 ```swift
 var array = [1, 2, 3, 4, 5, 6, 7, 8] as [Float]
-let buffer = MetalManager.computeDevice.makeBuffer(bytesNoCopy: &array, length: array.count * MemoryLayout<Float>.stride)!
+let buffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: &array)
 ```
 
 Define the command buffer. This buffer is used to hold each individual metal function, and their buffers.

@@ -28,4 +28,24 @@ struct MetalManagerTests {
         #expect(cgImage.dataProvider?.data as? Data == result?.dataProvider?.data as? Data)
     }
     
+    @Test
+    func serializedExecution() async throws {
+        var array = [1, 2, 3, 4, 5, 6, 7, 8] as [Float]
+        let buffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: &array)
+        
+        let commandBuffer = try await MetalCommandBuffer()
+        
+        try await MetalFunction(name: "doubleValues", bundle: .module)
+            .argument(buffer: buffer)
+            .dispatch(to: commandBuffer, width: array.count)
+        
+        try await MetalFunction(name: "addConstant", bundle: .module)
+            .argument(buffer: buffer)
+            .dispatch(to: commandBuffer, width: array.count)
+        
+        await commandBuffer.perform()
+        
+        #expect(array == [7.0, 9.0, 11.0, 13.0, 15.0, 17.0, 19.0, 21.0])
+    }
+    
 }

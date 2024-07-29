@@ -68,6 +68,21 @@ extension MTLDevice {
         return buffer
     }
     
+    /// Creates a buffer that wraps an existing contiguous memory allocation.
+    @inline(__always)
+    public func makeBuffer<T>(
+        bytesNoCopy array: inout Array<T>,
+        options: MTLResourceOptions = []
+    ) throws -> any MTLBuffer {
+        let label = "no copy from \(array.debugDescription)"
+        guard let buffer = self.makeBuffer(bytesNoCopy: &array, length: array.count &* MemoryLayout<T>.stride, options: options, deallocator: .none) else {
+            throw MetalResourceCreationError.cannotCreateBuffer(source: array.description)
+        }
+        buffer.label = label
+        
+        return buffer
+    }
+    
     /// Creates a buffer the method clears with zero values.
     @inline(__always)
     public func makeBuffer<T>(
