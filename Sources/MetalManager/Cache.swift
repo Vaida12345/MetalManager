@@ -20,7 +20,7 @@ actor Cache {
     lazy var commandQueue: MTLCommandQueue = MetalManager.Configuration.shared.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
     
     
-    nonisolated(unsafe) static let shared = Cache()
+    static let shared = Cache()
     
     
     func library(for bundle: Bundle) -> (any MTLLibrary)? {

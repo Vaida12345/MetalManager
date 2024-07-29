@@ -17,7 +17,7 @@ extension MetalManager {
         public lazy var computeDevice = MTLCreateSystemDefaultDevice()!
         
         /// The number of command queues that the main command queue can hold.
-        public var commandQueueLength: Int = 4
+        public var commandQueueLength: Int = 8
         
         
         nonisolated(unsafe) public static var shared = Configuration()

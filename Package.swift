@@ -16,5 +16,6 @@ let package = Package (
     ], targets: [
         .target(name: "MetalManager"),
         .testTarget(name: "MetalManagerTests", dependencies: ["MetalManager"]),
+        .executableTarget(name: "Client", dependencies: ["MetalManager"])
     ], swiftLanguageVersions: [.v6]
 )

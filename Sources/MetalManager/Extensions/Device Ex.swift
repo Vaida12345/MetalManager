@@ -57,7 +57,7 @@ extension MTLDevice {
     public func makeBuffer<T>(
         bytesNoCopy buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = [],
-        deallocator: ((UnsafeMutableRawPointer, Int) -> Void)?
+        deallocator: ((UnsafeMutableRawPointer, Int) -> Void)? = nil
     ) throws -> any MTLBuffer {
         let label = "no copy from \(buffer.debugDescription)"
         guard let buffer = self.makeBuffer(bytesNoCopy: buffer.baseAddress!, length: buffer.count &* MemoryLayout<T>.stride, options: options, deallocator: deallocator) else {

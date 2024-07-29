@@ -51,7 +51,7 @@ public final class MetalManager {
     /// - Parameters:
     ///   - function: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
-    public init(function: MetalArgumentFunction, at bundle: Bundle) async throws {
+    public init(function: MetalArgumentFunction) async throws {
         let device = MetalManager.Configuration.shared.computeDevice
         
 #if os(iOS)
@@ -59,6 +59,7 @@ public final class MetalManager {
 #endif
         
         let library: MTLLibrary
+        let bundle = function._function.bundle
         if let _library = await Cache.shared.library(for: bundle) {
             library = _library
         } else {
@@ -85,23 +86,24 @@ public final class MetalManager {
         self.commandEncoder = try function.makeCommandEncoder(commandBuffer: commandBuffer, commandState: pipelineState)
     }
     
+    nonisolated(unsafe) static var supportsNonUniformGridSize: Bool = {
+        if #available(macOS 10.15, *) {
+            if MetalManager.Configuration.shared.computeDevice.supportsFamily(.apple4) {
+                return true
+            } else {
+                return false
+            }
+        } else {
+            return false
+        }
+    }()
+    
     /// Runs the function.
     ///
     /// - Parameters:
     ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
     public func perform(gridSize: MTLSize) async throws {
-        let supportsNonuniform: Bool
-        
-        if #available(macOS 10.15, *) {
-            if MetalManager.Configuration.shared.computeDevice.supportsFamily(.apple4) {
-                supportsNonuniform = true
-            } else {
-                supportsNonuniform = false
-            }
-        } else {
-            supportsNonuniform = false
-        }
-        
+        let supportsNonuniform: Bool = MetalManager.supportsNonUniformGridSize
         
         if gridSize.height == 1 && gridSize.depth == 1 {
             let threadsPerThreadgroup = MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
