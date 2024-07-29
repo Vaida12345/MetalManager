@@ -9,6 +9,21 @@ import Metal
 import CoreGraphics
 
 
+extension MetalManager {
+    
+    /// The default device defined in ``MetalManager/Configuration``.
+    public static var computeDevice: any MTLDevice {
+        get {
+            MetalManager.Configuration.shared.computeDevice
+        }
+        set {
+            MetalManager.Configuration.shared.computeDevice = newValue
+        }
+    }
+    
+}
+
+
 extension MTLDevice {
     
     /// Allocates a new buffer of a given length and initializes its contents by copying existing data into it.
