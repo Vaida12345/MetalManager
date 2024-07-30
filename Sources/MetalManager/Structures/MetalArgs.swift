@@ -95,9 +95,17 @@ public extension MetalArgumentable {
     /// Copies data directly to the GPU to populate an entry in the buffer argument table.
     ///
     /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
-    consuming func argument<T>(bytes: MetalDependentState<T>) -> MetalArgumentFunction {
+    consuming func argument<T>(state: MetalDependentState<T>) -> MetalArgumentFunction {
         let length = MemoryLayout<T>.size
-        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.mutableBytes(bytes.content, length: length)])
+        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.buffer(state.content)])
+    }
+    
+    /// Copies data directly to the GPU to populate an entry in the buffer argument table.
+    ///
+    /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
+    consuming func argument<T>(bytes: UnsafeMutablePointer<T>) -> MetalArgumentFunction {
+        let length = MemoryLayout<T>.size
+        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.mutableBytes(bytes, length: length)])
     }
     
     /// Binds a texture to the texture argument table, allowing compute kernels to access its data on the GPU.
