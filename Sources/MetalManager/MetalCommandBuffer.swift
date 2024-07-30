@@ -9,7 +9,7 @@
 import Metal
 
 
-public struct MetalCommandBuffer: @unchecked Sendable {
+public final class MetalCommandBuffer: @unchecked Sendable {
     
     /// The sets of command associated with this metal manager.
     internal let commandBuffer: any MTLCommandBuffer

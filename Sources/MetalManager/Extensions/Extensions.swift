@@ -25,15 +25,15 @@ extension MTLTextureUsage {
 extension MTLTexture {
     
     
-    /// Creates the RGBA u8norm buffer from the given texture.
+    /// Creates buffer from the given texture.
     ///
     /// - Important: You are responsible for deallocation.
-    public func makeBuffer() -> UnsafeMutableBufferPointer<UInt8> {
+    public func makeBuffer(channelsCount: Int = 4) -> UnsafeMutableBufferPointer<UInt8> {
         let width = self.width
         let height = self.height
-        let rowBytes = width * 4 // assuming 4 channels (RGBA)
+        let rowBytes = width * channelsCount // assuming 4 channels (RGBA)
         
-        let dataPtr = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: width * height * 4)
+        let dataPtr = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: width * height * channelsCount)
         self.getBytes(dataPtr.baseAddress!, bytesPerRow: rowBytes, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         
         return dataPtr
