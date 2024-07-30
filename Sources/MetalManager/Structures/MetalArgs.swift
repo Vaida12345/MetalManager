@@ -41,6 +41,9 @@ public final class MetalArgumentFunction: MetalArgumentable {
                 var bytes = bytes
                 commandEncoder.setBytes(&bytes, length: length, index: bufferCount)
                 bufferCount += 1
+            case let .mutableBytes(bytes, length):
+                commandEncoder.setBytes(bytes, length: length, index: bufferCount)
+                bufferCount += 1
             }
         }
         commandEncoder.label = "Encoder(for: \(_function.name), textureCount: \(textureCount), bufferCount: \(bufferCount))"
@@ -59,6 +62,7 @@ public final class MetalArgumentFunction: MetalArgumentable {
         case texture(any MTLTexture)
         case buffer(any MTLBuffer)
         case bytes(Any, length: Int)
+        case mutableBytes(UnsafeRawPointer, length: Int)
     }
     
 }
@@ -86,6 +90,14 @@ public extension MetalArgumentable {
     consuming func argument<T>(bytes: T) -> MetalArgumentFunction {
         let length = MemoryLayout<T>.size
         return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.bytes(bytes, length: length)])
+    }
+    
+    /// Copies data directly to the GPU to populate an entry in the buffer argument table.
+    ///
+    /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
+    consuming func argument<T>(bytes: MetalDependentState<T>) -> MetalArgumentFunction {
+        let length = MemoryLayout<T>.size
+        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.mutableBytes(bytes.content, length: length)])
     }
     
     /// Binds a texture to the texture argument table, allowing compute kernels to access its data on the GPU.
