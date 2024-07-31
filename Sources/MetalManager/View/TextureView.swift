@@ -5,6 +5,7 @@
 //  Created by Vaida on 7/19/24.
 //
 
+#if canImport(SwiftUI)
 import SwiftUI
 import MetalKit
 
@@ -234,3 +235,4 @@ private extension CGSize {
     }
     
 }
+#endif

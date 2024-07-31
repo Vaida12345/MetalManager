@@ -2,6 +2,7 @@ import Testing
 import AppKit
 @testable import MetalManager
 
+
 @Suite("Metal Manager Tests")
 struct MetalManagerTests {
     
