@@ -28,4 +28,4 @@ https://github.com/Vaida12345/MetalManager
 
 ## Documentation
 
-This package entails a detailed DocC documentation, with an interactive tutorial for a step-by-step 101.
+This package entails a detailed DocC documentation.
