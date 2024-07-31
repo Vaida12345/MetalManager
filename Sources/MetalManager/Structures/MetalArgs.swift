@@ -91,7 +91,6 @@ public extension MetalArgumentable {
     ///
     /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
     consuming func argument<T>(state: MetalDependentState<T>) -> MetalArgumentFunction {
-        let length = MemoryLayout<T>.size
         return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.buffer(state.content)])
     }
     
@@ -116,42 +115,13 @@ public extension MetalArgumentFunction {
     /// Dispatch to the `commandBuffer` for batched execution.
     consuming func dispatch(to commandBuffer: MetalCommandBuffer, width: Int, height: Int = 1, depth: Int = 1) async throws {
         // Get the function
-        let device = MetalManager.computeDevice
         let library = try await Cache.shared.getLibrary(for: self._function.bundle)
         let pipelineState = try await Cache.getPipeline(for: self._function, library: library)
         
         let commandEncoder = commandBuffer.commandEncoder
-        try self.passArgs(to: commandBuffer.commandEncoder, commandBuffer: commandBuffer.commandBuffer, commandState: pipelineState)
+        try self.passArgs(to: commandEncoder, commandBuffer: commandBuffer.commandBuffer, commandState: pipelineState)
         
-        // Commit the function & buffers
-        let supportsNonuniform: Bool = MetalManager.supportsNonUniformGridSize
-        let gridSize = MTLSize(width: width, height: height, depth: depth)
-        
-        if height == 1 && depth == 1 {
-            let threadsPerThreadgroup = MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
-                                              height: 1,
-                                              depth: 1)
-            
-            if supportsNonuniform {
-                commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
-            } else {
-                commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-            }
-        } else {
-            let size = Int(sqrt(Double(pipelineState.maxTotalThreadsPerThreadgroup)))
-            
-            let threadsPerThreadgroup = MTLSize(width: size, height: size, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (width + size - 1) / size,
-                                              height: (height + size - 1) / size,
-                                              depth: 1)
-            
-            if supportsNonuniform {
-                commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
-            } else {
-                commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-            }
-        }
+        MTLComputeCommandEncoderDispatch(encoder: commandEncoder, pipelineState: pipelineState, width: width, height: height, depth: depth)
     }
     
 }

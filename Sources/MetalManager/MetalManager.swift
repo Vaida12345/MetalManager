@@ -6,9 +6,8 @@
 //  Copyright © 2019 - 2023 Vaida. All rights reserved.
 //
 
-
-#if !os(watchOS)
-@preconcurrency import CoreML
+@preconcurrency
+import CoreML
 
 
 /// A manager for `Metal` Calculation.
@@ -52,32 +51,9 @@ public final class MetalManager {
     ///   - function: The name of the metal function, as defined in the `.metal` file.
     ///   - bundle: The bundle where the given `.metal` file is located.
     public init(function: MetalArgumentFunction) async throws {
-        let device = MetalManager.Configuration.shared.computeDevice
-        
-#if os(iOS)
-        guard device.supportsFeatureSet(.iOS_GPUFamily4_v1) else { throw Error.hardwareNotSupported }
-#endif
-        
-        let library: MTLLibrary
-        let bundle = function._function.bundle
-        if let _library = await Cache.shared.library(for: bundle) {
-            library = _library
-        } else {
-            library = try device.makeDefaultLibrary(bundle: bundle)
-            library.label = "MTLLibrary(bundle: \(bundle))"
-            
-            await Cache.shared.set(library: library, key: bundle)
-        }
-        
-        
-        if let pipeLine = await Cache.shared.pipelineState(for: function._function) {
-            self.pipelineState = pipeLine
-        } else {
-            let metalFunction = try await function._function.makeFunction(library: library)
-            let pipe = try await device.makeComputePipelineState(function: metalFunction)
-            await Cache.shared.set(pipelineState: pipe, key: function._function)
-            self.pipelineState = pipe
-        }
+        let library = try await Cache.shared.getLibrary(for: function._function.bundle)
+        let pipelineState = try await Cache.getPipeline(for: function._function, library: library)
+        self.pipelineState = pipelineState
         
         guard let commandBuffer = await Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
         commandBuffer.label = "CommandBuffer(for: \(function._function.name))"
@@ -105,42 +81,13 @@ public final class MetalManager {
     /// - Parameters:
     ///   - gridSize: Sets the size of the `thread_position_in_grid` in .metal. the three arguments represent the x, y, z dimensions.
     public func perform(gridSize: MTLSize) async throws {
-        let supportsNonuniform: Bool = MetalManager.supportsNonUniformGridSize
-        
-        if gridSize.height == 1 && gridSize.depth == 1 {
-            let threadsPerThreadgroup = MTLSize(width: pipelineState.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
-                                              height: 1,
-                                              depth: 1)
-            
-            if supportsNonuniform {
-                commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
-            } else {
-                commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-            }
-        } else {
-            let threadsPerThreadgroup = MTLSize(width: 16, height: 16, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + 15) / 16,
-                                              height: (gridSize.height + 15) / 16,
-                                              depth: 1)
-            
-            if supportsNonuniform {
-                commandEncoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
-            } else {
-                commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-            }
-        }
+        MTLComputeCommandEncoderDispatch(encoder: self.commandEncoder, pipelineState: self.pipelineState, width: gridSize.width, height: gridSize.height, depth: gridSize.depth)
         
         // Run the metal.
         commandEncoder.endEncoding()
         commandBuffer.commit()
         
-        let commit_date = Date()
-        print("Start to compute")
         commandBuffer.waitUntilCompleted()
-        if #available(macOS 10.15, *) {
-            print("Actual Compute took \(commit_date.distance(to: Date()))")
-        }
     }
     
     /// Runs the function.
@@ -190,4 +137,3 @@ public final class MetalManager {
     }
     
 }
-#endif
