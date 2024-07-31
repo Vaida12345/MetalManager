@@ -9,6 +9,7 @@
 import Metal
 
 
+/// A class with info about the command buffer and command encoder.
 public final class MetalCommandBuffer: @unchecked Sendable {
     
     /// The sets of command associated with this metal manager.

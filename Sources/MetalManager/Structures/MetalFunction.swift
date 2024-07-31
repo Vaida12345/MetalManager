@@ -6,10 +6,12 @@
 //
 
 import Foundation
-@preconcurrency import Metal
+@preconcurrency
+import Metal
 
 
-public final class MetalFunction: Hashable, MetalArgumentable, @unchecked Sendable {
+/// The bridge to a Metal function.
+public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Sendable {
     
     let name: String
     

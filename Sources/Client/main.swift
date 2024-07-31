@@ -9,7 +9,7 @@ import MetalManager
 
 
 var array = [1, 2, 3, 4, 5, 6, 7, 8] as [Float]
-let buffer = MetalManager.computeDevice.makeBuffer(bytesNoCopy: &array, length: array.count * MemoryLayout<Float>.stride)!
+let buffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: &array)
 
 let commandBuffer = try await MetalCommandBuffer()
 

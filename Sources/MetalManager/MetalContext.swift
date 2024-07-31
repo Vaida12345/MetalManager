@@ -28,16 +28,6 @@ public actor MetalContext {
     }
     
     public func addJob() async throws -> MetalCommandBuffer {
-        var cumulative = 0
-        while self.state == .working {
-            await Task.yield()
-            try Task.checkCancellation()
-            cumulative &+= 1
-            if cumulative > 100 {
-                fatalError("Stuck in inf loop.")
-            }
-        }
-        
         self.state = .pending
         return self.commandBuffer
     }

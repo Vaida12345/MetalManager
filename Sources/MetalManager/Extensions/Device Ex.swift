@@ -111,7 +111,7 @@ extension MTLDevice {
         descriptor.storageMode = .shared
         
         guard let texture = MetalManager.Configuration.shared.computeDevice.makeTexture(descriptor: descriptor) else {
-            throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotCreateEmptyTexture)
+            throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotCreateEmptyTexture(width: image.width, height: image.height))
         }
         texture.label = "Texture from \(image)"
         
@@ -134,39 +134,4 @@ extension MTLDevice {
         return texture
     }
     
-}
-
-
-public enum MetalResourceCreationError: LocalizedError, CustomStringConvertible {
-    /// Indicates failure of `MTLBuffer` creation.
-    case cannotCreateBuffer(source: String)
-    case cannotCreateTexture(reason: TextureFailureReason)
-    
-    
-    public var description: String {
-        switch self {
-        case .cannotCreateBuffer(let source):
-            "Failed to create Metal buffer from \(source)"
-        case .cannotCreateTexture(let reason):
-            "Failed to create Metal texture: \(reason.description)"
-        }
-    }
-    
-    public var errorDescription: String? {
-        self.description
-    }
-    
-    public enum TextureFailureReason: CustomStringConvertible, Sendable {
-        case cannotCreateEmptyTexture
-        case cannotObtainImageData(image: CGImage)
-        
-        public var description: String {
-            switch self {
-            case .cannotCreateEmptyTexture:
-                "Failed to create an empty texture."
-            case .cannotObtainImageData(let image):
-                "Failed to obtain image data from \(image)"
-            }
-        }
-    }
 }

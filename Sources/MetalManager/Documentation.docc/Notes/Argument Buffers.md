@@ -7,7 +7,7 @@ Use argument buffers to reduce CPU overhead, simplify resource management, and i
 
 You typically start by defining the parameters, separated for `metal` and `swift`.
 
-```metal
+```c
 // GenerateBinarizedParameters.metal
 struct GenerateBinarizedParameters {
     int neighbor;
@@ -31,7 +31,7 @@ struct GenerateBinarizedParameters {
 
 ## Passing Argument
 
-```metal
+```c
 kernel void generateBinarized(
     device const float* buffer,
     constant GenerateBinarizedParameters& params,

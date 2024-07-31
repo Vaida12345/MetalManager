@@ -42,24 +42,50 @@ https://github.com/Vaida12345/MetalManager
 
 ## Topics
 
-### Guides
+### MetalFunction
 
-- <doc:/tutorials/MetalGuide>
+Initialize and run a function to run on GPU.
+
+- <doc:Running-Metal>
+- ``MetalFunction``
+
+
+- ``MetalContext``
+
+### Serializing Execution
+Run multiple functions in batch.
+
+- <doc:Serialized-Execution>
+- ``MetalCommandBuffer``
+
+### Advanced Coordinations
+Coordinate resources between the CPU and GPU.
+
+- <doc:Advanced-Coordination>
+- ``MetalContext``
+- ``MetalDependentState``
+
+
+### Working with SwiftUI
+
+An `Image` with `MTLTexture` as backend.
+
+- ``TextureView``
+
+### Conversion
+
+- <doc:Conversions>
+
+
+### Implementation Details 
+
+These structures are implementation details, and generally do not concern the users.
+
+- ``MetalArgumentFunction``
+- ``MetalFunctionProtocol``
+
 
 ### Manager
+The artifact from old implementations. You should run metal without using this structure directly.
+
 - ``MetalManager/MetalManager``
-
-### Creating a manager
-- ``MetalManager/MetalManager/init(name:fileWithin:)``
-
-### The workflow
-- ``MetalManager/MetalManager/setConstant(_:type:)``
-- ``MetalManager/MetalManager/setBuffer(_:)-59eiu``
-
-- <doc:InputVariations>
-
-### Additional Setups
-- ``MetalManager/MetalManager/threadsPerThreadGroup``
-
-### Performs calculation
-- ``MetalManager/MetalManager/perform(gridSize:)``

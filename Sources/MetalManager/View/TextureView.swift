@@ -9,6 +9,7 @@ import SwiftUI
 import MetalKit
 
 
+/// A view that renders the texture with the provided aspect ratio content mode. This view behaves similar to `SwiftUI.Image`.
 public struct TextureView: NSViewRepresentable {
     
     let texture: MTLTexture
@@ -50,8 +51,15 @@ public struct TextureView: NSViewRepresentable {
         return nil
     }
     
+    /// Sets the content mode.
+    ///
+    /// - Parameters:
+    ///   - contentMode: A flag indicating whether this view should fit or fill the parent context.
+    public func aspectRatio(contentMode: ContentMode) -> TextureView {
+        TextureView(texture: self.texture, aspectRatio: contentMode)
+    }
     
-    public init(texture: MTLTexture, aspectRatio contentMode: ContentMode? = .fit) {
+    public init(texture: MTLTexture, aspectRatio contentMode: ContentMode? = nil) {
         self.texture = texture
         self.contentMode = contentMode
     }

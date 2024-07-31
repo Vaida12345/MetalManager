@@ -49,7 +49,6 @@ public final class MetalManager {
     ///
     /// - Parameters:
     ///   - function: The name of the metal function, as defined in the `.metal` file.
-    ///   - bundle: The bundle where the given `.metal` file is located.
     public init(function: MetalArgumentFunction) async throws {
         let library = try await Cache.shared.getLibrary(for: function._function.bundle)
         let pipelineState = try await Cache.getPipeline(for: function._function, library: library)
@@ -60,7 +59,7 @@ public final class MetalManager {
         self.commandBuffer = commandBuffer
         
         let encoder = commandBuffer.makeComputeCommandEncoder()!
-        self.commandEncoder = self.commandBuffer.makeComputeCommandEncoder()!
+        self.commandEncoder = encoder
         try function.passArgs(to: encoder, commandBuffer: commandBuffer, commandState: pipelineState)
     }
     

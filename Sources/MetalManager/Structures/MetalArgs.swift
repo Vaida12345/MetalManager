@@ -9,7 +9,8 @@
 import CoreGraphics
 
 
-public final class MetalArgumentFunction: MetalArgumentable {
+/// A metal function with information about its arguments (buffers).
+public final class MetalArgumentFunction: MetalFunctionProtocol {
     
     public let _function: MetalFunction
     
@@ -63,7 +64,8 @@ public final class MetalArgumentFunction: MetalArgumentable {
 }
 
 
-public protocol MetalArgumentable {
+/// A Metal function.
+public protocol MetalFunctionProtocol {
     
     var _function: MetalFunction { get }
     
@@ -72,7 +74,7 @@ public protocol MetalArgumentable {
 }
 
 
-public extension MetalArgumentable {
+public extension MetalFunctionProtocol {
     
     /// Binds a buffer to the buffer argument table, allowing compute kernels to access its data on the GPU.
     consuming func argument(buffer: any MTLBuffer) -> MetalArgumentFunction {

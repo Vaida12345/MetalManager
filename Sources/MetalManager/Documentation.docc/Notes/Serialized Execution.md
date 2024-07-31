@@ -17,7 +17,7 @@ You can begin by defining the functions as you normally would.
 
 - Tip: When functions are not specialized, which is recommended, you can define multiple metal functions within the same file.
 
-```msl
+```c
 #include <metal_stdlib>
 using namespace metal;
 
@@ -85,3 +85,7 @@ The comparison as stated by gpt-4-1106-preview.
 | **Debugging**             | Simplified debugging with a single sequence of commands.        | Potentially more complex due to interactions across multiple command buffers. |
 | **Flexibility**           | Limited flexibility for concurrent execution of commands.       | Greater flexibility to execute commands concurrently on different queues. |
 | **Submission**            | Single submission point to the GPU.                            | Multiple submissions may introduce overhead but allow for finer-grained control. |
+
+## Next Step
+
+Learn advanced coordinations [here](<doc:Advanced-Coordination>).
