@@ -6,7 +6,7 @@
 //
 
 import Foundation
-import Metal
+@preconcurrency import Metal
 
 
 actor Cache {
@@ -45,6 +45,37 @@ actor Cache {
     
     func set(pipelineState: any MTLComputePipelineState, key: MetalFunction) {
         self.pipelineStates[key] = pipelineState
+    }
+    
+    
+    func getLibrary(for bundle: Bundle) throws -> any MTLLibrary {
+        let device = MetalManager.computeDevice
+        let library: MTLLibrary
+        if let _library = self.library(for: bundle) {
+            library = _library
+        } else {
+            library = try device.makeDefaultLibrary(bundle: bundle)
+            library.label = "MTLLibrary(bundle: \(bundle))"
+            
+            self.set(library: library, key: bundle)
+        }
+        
+        return library
+    }
+    
+    static func getPipeline(for function: MetalFunction, library: any MTLLibrary) async throws -> any MTLComputePipelineState {
+        let device = MetalManager.computeDevice
+        let pipelineState: any MTLComputePipelineState
+        if let pipeLine = await Cache.shared.pipelineState(for: function) {
+            pipelineState = pipeLine
+        } else {
+            let metalFunction = try await function.makeFunction(library: library)
+            let pipe = try await device.makeComputePipelineState(function: metalFunction)
+            await Cache.shared.set(pipelineState: pipe, key: function)
+            pipelineState = pipe
+        }
+        
+        return pipelineState
     }
     
 }

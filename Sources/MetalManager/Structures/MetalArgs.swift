@@ -21,10 +21,7 @@ public final class MetalArgumentFunction: MetalArgumentable {
         try await manager.perform(width: width, height: height, depth: depth)
     }
     
-    func makeCommandEncoder(commandBuffer: MTLCommandBuffer, commandState: MTLComputePipelineState) throws -> MTLComputeCommandEncoder {
-        guard let commandEncoder = commandBuffer.makeComputeCommandEncoder() else { throw MetalManager.Error.cannotCreateMetalCommandEncoder }
-        commandEncoder.label = "Encoder(for: \(_function.name))"
-        
+    func passArgs(to commandEncoder: any MTLComputeCommandEncoder, commandBuffer: MTLCommandBuffer, commandState: MTLComputePipelineState) throws {
         commandEncoder.setComputePipelineState(commandState)
         
         var textureCount = 0
@@ -47,8 +44,6 @@ public final class MetalArgumentFunction: MetalArgumentable {
             }
         }
         commandEncoder.label = "Encoder(for: \(_function.name), textureCount: \(textureCount), bufferCount: \(bufferCount))"
-        
-        return commandEncoder
     }
     
     
@@ -122,31 +117,11 @@ public extension MetalArgumentFunction {
     consuming func dispatch(to commandBuffer: MetalCommandBuffer, width: Int, height: Int = 1, depth: Int = 1) async throws {
         // Get the function
         let device = MetalManager.computeDevice
-        let library: MTLLibrary
-        let bundle = self._function.bundle
-        if let _library = await Cache.shared.library(for: bundle) {
-            library = _library
-        } else {
-            library = try device.makeDefaultLibrary(bundle: bundle)
-            library.label = "MTLLibrary(bundle: \(bundle))"
-            
-            await Cache.shared.set(library: library, key: bundle)
-        }
+        let library = try await Cache.shared.getLibrary(for: self._function.bundle)
+        let pipelineState = try await Cache.getPipeline(for: self._function, library: library)
         
-        
-        let pipelineState: any MTLComputePipelineState
-        if let pipeLine = await Cache.shared.pipelineState(for: self._function) {
-            pipelineState = pipeLine
-        } else {
-            let metalFunction = try await self._function.makeFunction(library: library)
-            let pipe = try await device.makeComputePipelineState(function: metalFunction)
-            await Cache.shared.set(pipelineState: pipe, key: self._function)
-            pipelineState = pipe
-        }
-        
-        
-        let commandEncoder = try self.makeCommandEncoder(commandBuffer: commandBuffer.commandBuffer, commandState: pipelineState)
-        
+        let commandEncoder = commandBuffer.commandEncoder
+        try self.passArgs(to: commandBuffer.commandEncoder, commandBuffer: commandBuffer.commandBuffer, commandState: pipelineState)
         
         // Commit the function & buffers
         let supportsNonuniform: Bool = MetalManager.supportsNonUniformGridSize
@@ -164,9 +139,11 @@ public extension MetalArgumentFunction {
                 commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
             }
         } else {
-            let threadsPerThreadgroup = MTLSize(width: 16, height: 16, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (width + 15) / 16,
-                                              height: (height + 15) / 16,
+            let size = Int(sqrt(Double(pipelineState.maxTotalThreadsPerThreadgroup)))
+            
+            let threadsPerThreadgroup = MTLSize(width: size, height: size, depth: 1)
+            let threadgroupsPerGrid = MTLSize(width: (width + size - 1) / size,
+                                              height: (height + size - 1) / size,
                                               depth: 1)
             
             if supportsNonuniform {
@@ -175,8 +152,6 @@ public extension MetalArgumentFunction {
                 commandEncoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
             }
         }
-        
-        commandEncoder.endEncoding()
     }
     
 }

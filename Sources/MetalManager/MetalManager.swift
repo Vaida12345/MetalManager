@@ -83,7 +83,9 @@ public final class MetalManager {
         commandBuffer.label = "CommandBuffer(for: \(function._function.name))"
         self.commandBuffer = commandBuffer
         
-        self.commandEncoder = try function.makeCommandEncoder(commandBuffer: commandBuffer, commandState: pipelineState)
+        let encoder = commandBuffer.makeComputeCommandEncoder()!
+        self.commandEncoder = self.commandBuffer.makeComputeCommandEncoder()!
+        try function.passArgs(to: encoder, commandBuffer: commandBuffer, commandState: pipelineState)
     }
     
     nonisolated(unsafe) static var supportsNonUniformGridSize: Bool = {
