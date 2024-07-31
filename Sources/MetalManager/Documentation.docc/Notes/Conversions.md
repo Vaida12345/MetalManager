@@ -22,3 +22,7 @@ Convert common swift structures with their Metal counterpart.
 
 - ``Metal/MTLDevice/makeBuffer(bytes:options:)``
 - ``Metal/MTLDevice/makeBuffer(bytesNoCopy:options:deallocator:)``
+
+### Conversion Error
+
+- ``MetalResourceCreationError``

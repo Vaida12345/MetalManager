@@ -26,10 +26,16 @@ public final class MetalDependentState<Content> {
         return content.contents().assumingMemoryBound(to: Content.self).pointee
     }
     
+    /// Creates the state with its initial value.
+    ///
+    /// - Important: The size of `Content` needs to be less than 4KB.
     public init(initialValue: Content, context: MetalContext) {
+        let size = MemoryLayout<Content>.size
+        precondition(size < 4096)
+        
         var initialValue = initialValue
         self.context = context
-        self.content = MetalManager.computeDevice.makeBuffer(bytes: &initialValue, length: MemoryLayout<Content>.size)!
+        self.content = MetalManager.computeDevice.makeBuffer(bytes: &initialValue, length: size)!
     }
     
 }
