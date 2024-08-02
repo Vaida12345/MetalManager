@@ -24,14 +24,13 @@ extension MTLTextureUsage {
 
 extension MTLTexture {
     
-    
     /// Creates buffer from the given texture.
     ///
     /// - Important: You are responsible for deallocation.
-    public func makeBuffer(channelsCount: Int = 4) -> UnsafeMutableBufferPointer<UInt8> {
+    public func makeBuffer(channelsCount: Int, bitsPerComponent: Int = 8) -> UnsafeMutableBufferPointer<UInt8> {
         let width = self.width
         let height = self.height
-        let rowBytes = width * channelsCount // assuming 4 channels (RGBA)
+        let rowBytes = width * channelsCount * bitsPerComponent / 8
         
         let dataPtr = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: width * height * channelsCount)
         self.getBytes(dataPtr.baseAddress!, bytesPerRow: rowBytes, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
@@ -40,16 +39,16 @@ extension MTLTexture {
     }
     
     /// Creates a `CGImage` from the texture.
-    public func makeCGImage(colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> CGImage? {
-        let buffer = self.makeBuffer()
-        let rowBytes = width * 4 // assuming 4 channels (RGBA)
+    public func makeCGImage(channelsCount: Int, bitsPerComponent: Int = 8, colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> CGImage? {
+        let buffer = self.makeBuffer(channelsCount: channelsCount)
+        let rowBytes = width * channelsCount * bitsPerComponent / 8
         let data = Data(bytesNoCopy: buffer.baseAddress!, count: width * height * 4, deallocator: .free)
         
         guard let provider = CGDataProvider(data: data as CFData),
               let cgImage = CGImage(width: width,
                                     height: height,
-                                    bitsPerComponent: 8,
-                                    bitsPerPixel: 32,
+                                    bitsPerComponent: bitsPerComponent,
+                                    bitsPerPixel: channelsCount * bitsPerComponent,
                                     bytesPerRow: rowBytes,
                                     space: colorSpace,
                                     bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),

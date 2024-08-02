@@ -27,6 +27,10 @@ public final class MetalCommandBuffer: @unchecked Sendable {
         self.commandEncoder = self.commandBuffer.makeComputeCommandEncoder()!
     }
     
+    public func getCommandBuffer() -> any MTLCommandBuffer {
+        self.commandBuffer
+    }
+    
     /// Performs and waits for completion.
     public func perform() async {
         self.isEncoded = true
