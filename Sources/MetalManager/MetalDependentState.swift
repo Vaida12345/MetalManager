@@ -33,9 +33,12 @@ public final class MetalDependentState<Content> {
         let size = MemoryLayout<Content>.size
         precondition(size < 4096)
         
-        var initialValue = initialValue
         self.context = context
-        self.content = MetalManager.computeDevice.makeBuffer(bytes: &initialValue, length: size)!
+        
+        let buffer = UnsafeMutablePointer<Content>.allocate(capacity: 1)
+        buffer.initialize(to: initialValue)
+        self.content = MetalManager.computeDevice.makeBuffer(bytes: buffer, length: size)!
+        buffer.deallocate()
     }
     
 }

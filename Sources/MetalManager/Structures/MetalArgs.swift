@@ -5,11 +5,14 @@
 //  Created by Vaida on 7/19/24.
 //
 
+import Foundation
 @preconcurrency import Metal
 import CoreGraphics
 
 
 /// A metal function with information about its arguments (buffers).
+///
+/// - Important: You cannot reuse a function, due to the current design. Doing so would read from deallocated buffers.
 public final class MetalArgumentFunction: MetalFunctionProtocol {
     
     public let _function: MetalFunction
@@ -36,8 +39,8 @@ public final class MetalArgumentFunction: MetalFunctionProtocol {
                 commandEncoder.setBuffer(buffer, offset: 0, index: bufferCount)
                 bufferCount += 1
             case let .bytes(bytes, length):
-                var bytes = bytes
-                commandEncoder.setBytes(&bytes, length: length, index: bufferCount)
+                commandEncoder.setBytes(bytes, length: length, index: bufferCount)
+                bytes.deallocate()
                 bufferCount += 1
             case let .mutableBytes(bytes, length):
                 commandEncoder.setBytes(bytes, length: length, index: bufferCount)
@@ -57,7 +60,7 @@ public final class MetalArgumentFunction: MetalFunctionProtocol {
     public enum Argument {
         case texture(any MTLTexture)
         case buffer(any MTLBuffer)
-        case bytes(Any, length: Int)
+        case bytes(UnsafeRawPointer, length: Int)
         case mutableBytes(UnsafeRawPointer, length: Int)
     }
     
@@ -86,7 +89,9 @@ public extension MetalFunctionProtocol {
     /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
     consuming func argument<T>(bytes: T) -> MetalArgumentFunction {
         let length = MemoryLayout<T>.size
-        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.bytes(bytes, length: length)])
+        let buffer = UnsafeMutablePointer<T>.allocate(capacity: 1)
+        buffer.initialize(to: bytes)
+        return MetalArgumentFunction(function: self._function, arguments: self._arguments + [.bytes(buffer, length: length)])
     }
     
     /// Copies data directly to the GPU to populate an entry in the buffer argument table.

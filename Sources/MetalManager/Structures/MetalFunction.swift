@@ -11,6 +11,8 @@ import Metal
 
 
 /// The bridge to a Metal function.
+///
+/// - Important: You cannot reuse a function, due to the current design. Doing so would read from deallocated buffers.
 public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Sendable {
     
     let name: String
@@ -28,15 +30,12 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
         }
     }
     
-    public consuming func constant(_ value: some Hashable, type: MTLDataType) -> MetalFunction {
+    public consuming func constant<T>(_ value: T, type: MTLDataType) -> MetalFunction where T: Hashable {
         let hash = value.hashValue
-        var value = value
+        let buffer = UnsafeMutablePointer<T>.allocate(capacity: 1)
+        buffer.initialize(to: value)
         
-        return self.constant(&value, type: type, hash: hash)
-    }
-    
-    private consuming func constant(_ value: UnsafeRawPointer, type: MTLDataType, hash: Int) -> MetalFunction {
-        MetalFunction(name: self.name, constants: self.constants + [(value, type, hash)], bundle: self.bundle)
+        return MetalFunction(name: self.name, constants: self.constants + [(UnsafeRawPointer(buffer), type, hash)], bundle: self.bundle)
     }
     
     internal func makeFunction(library: MTLLibrary) async throws -> MTLFunction {
@@ -51,6 +50,7 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
             let constants = MTLFunctionConstantValues()
             for (index, constant) in self.constants.enumerated() {
                 constants.setConstantValue(constant.value, type: constant.type, index: index)
+                constant.value.deallocate()
             }
             function = library.makeFunction(name: name)
         }
