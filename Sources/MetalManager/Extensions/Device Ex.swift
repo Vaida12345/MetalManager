@@ -115,21 +115,26 @@ extension MTLDevice {
         }
         texture.label = "Texture from \(image)"
         
-        guard let data = image.dataProvider?.data as? Data else {
-            throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
-        }
+        let context = CGContext(
+            data: nil,
+            width: image.width,
+            height: image.height,
+            bitsPerComponent: 8,
+            bytesPerRow: 4 * image.width,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.draw(image, in: CGRect(origin: .zero, size: CGSize(width: image.width, height: image.height)))
         
-        data.withUnsafeBytes { (bytes: UnsafeRawBufferPointer) in
-            texture.replace(
-                region: MTLRegion(
-                    origin: MTLOrigin(x: 0, y: 0, z: 0),
-                    size: MTLSize(width: image.width, height: image.height, depth: 1)
-                ),
-                mipmapLevel: 0,
-                withBytes: bytes.baseAddress!,
-                bytesPerRow: image.bytesPerRow
-            )
-        }
+        texture.replace(
+            region: MTLRegion(
+                origin: MTLOrigin(x: 0, y: 0, z: 0),
+                size: MTLSize(width: image.width, height: image.height, depth: 1)
+            ),
+            mipmapLevel: 0,
+            withBytes: context.data!,
+            bytesPerRow: 4 * image.width
+        )
         
         return texture
     }
