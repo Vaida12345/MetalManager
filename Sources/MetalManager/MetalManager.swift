@@ -75,6 +75,13 @@ public final class MetalManager {
         }
     }()
     
+    /// Prepare cache for this app.
+    ///
+    /// Call this to facilitate faster execution, for example, when launching the app.
+    public static func prepareCache() async {
+        let _ = await Cache.shared.commandQueue
+    }
+    
     /// Runs the function.
     ///
     /// - Parameters:

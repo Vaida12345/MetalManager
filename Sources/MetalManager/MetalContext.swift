@@ -7,7 +7,7 @@
 
 
 /// The coordinator of execution.
-public actor MetalContext {
+public final class MetalContext {
     
     var commandBuffer: MetalCommandBuffer
     
