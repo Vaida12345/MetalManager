@@ -39,7 +39,7 @@ extension MTLTexture {
     }
     
     /// Creates a `CGImage` from the texture.
-    public func makeCGImage(channelsCount: Int, bitsPerComponent: Int = 8, colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB()) -> CGImage? {
+    public func makeCGImage(channelsCount: Int = 4, bitsPerComponent: Int = 8, colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo = .premultipliedLast) -> CGImage? {
         let buffer = self.makeBuffer(channelsCount: channelsCount)
         let rowBytes = width * channelsCount * bitsPerComponent / 8
         let data = Data(bytesNoCopy: buffer.baseAddress!, count: width * height * 4, deallocator: .free)
@@ -51,7 +51,7 @@ extension MTLTexture {
                                     bitsPerPixel: channelsCount * bitsPerComponent,
                                     bytesPerRow: rowBytes,
                                     space: colorSpace,
-                                    bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue),
+                                    bitmapInfo: CGBitmapInfo(rawValue: bitmapInfo.rawValue),
                                     provider: provider,
                                     decode: nil,
                                     shouldInterpolate: false,
