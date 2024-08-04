@@ -54,7 +54,7 @@ public final class MetalManager {
         let pipelineState = try await Cache.getPipeline(for: function._function, library: library)
         self.pipelineState = pipelineState
         
-        guard let commandBuffer = await Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
+        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw Error.cannotCreateMetalCommandBuffer }
         commandBuffer.label = "CommandBuffer(for: \(function._function.name))"
         self.commandBuffer = commandBuffer
         
@@ -79,7 +79,7 @@ public final class MetalManager {
     ///
     /// Call this to facilitate faster execution, for example, when launching the app.
     public static func prepareCache() async {
-        let _ = await Cache.shared.commandQueue
+        let _ = Cache.shared.commandQueue
     }
     
     /// Runs the function.

@@ -27,20 +27,39 @@ extension MTLTexture {
     /// Creates buffer from the given texture.
     ///
     /// - Important: You are responsible for deallocation.
-    public func makeBuffer(channelsCount: Int, bitsPerComponent: Int = 8) -> UnsafeMutableBufferPointer<UInt8> {
+    public func makeBuffer(channelsCount: Int, bitsPerComponent: Int = 8) throws -> UnsafeMutableBufferPointer<UInt8> {
         let width = self.width
         let height = self.height
         let rowBytes = width * channelsCount * bitsPerComponent / 8
         
-        let dataPtr = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: width * height * channelsCount)
-        self.getBytes(dataPtr.baseAddress!, bytesPerRow: rowBytes, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
+        let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer()!
+        let encoder = commandBuffer.makeBlitCommandEncoder()!
         
-        return dataPtr
+        let buffer = UnsafeMutableBufferPointer<UInt8>.allocate(capacity: width * height * channelsCount)
+        let metalBuffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: buffer)
+        
+        encoder.copy(
+            from: self,
+            sourceSlice: 0,
+            sourceLevel: 0,
+            sourceOrigin: MTLOrigin(x: 0, y: 0, z: 0),
+            sourceSize: MTLSize(width: width, height: height, depth: 1),
+            to: metalBuffer,
+            destinationOffset: 0,
+            destinationBytesPerRow: rowBytes,
+            destinationBytesPerImage: 0
+        )
+        
+        encoder.endEncoding()
+        commandBuffer.commit()
+        commandBuffer.waitUntilCompleted()
+        
+        return buffer
     }
     
     /// Creates a `CGImage` from the texture.
-    public func makeCGImage(channelsCount: Int = 4, bitsPerComponent: Int = 8, colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo = .premultipliedLast) -> CGImage? {
-        let buffer = self.makeBuffer(channelsCount: channelsCount)
+    public func makeCGImage(channelsCount: Int = 4, bitsPerComponent: Int = 8, colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo = .premultipliedLast) throws -> CGImage {
+        let buffer = try self.makeBuffer(channelsCount: channelsCount)
         let rowBytes = width * channelsCount * bitsPerComponent / 8
         let data = Data(bytesNoCopy: buffer.baseAddress!, count: width * height * 4, deallocator: .free)
         
@@ -56,7 +75,7 @@ extension MTLTexture {
                                     decode: nil,
                                     shouldInterpolate: false,
                                     intent: .defaultIntent) else {
-            return nil
+            throw MetalResourceCreationError.cannotCreateCGImageFromTexture
         }
         
         return cgImage

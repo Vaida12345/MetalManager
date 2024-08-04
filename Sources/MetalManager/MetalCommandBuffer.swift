@@ -5,7 +5,6 @@
 //  Created by Vaida on 7/29/24.
 //
 
-@preconcurrency
 import Metal
 
 
@@ -21,7 +20,7 @@ public final class MetalCommandBuffer: @unchecked Sendable {
     
     
     public init() async throws {
-        guard let commandBuffer = await Cache.shared.commandQueue.makeCommandBuffer() else { throw MetalManager.Error.cannotCreateMetalCommandBuffer }
+        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw MetalManager.Error.cannotCreateMetalCommandBuffer }
         commandBuffer.label = "CommandBuffer(for: some MetalCommandBuffer)"
         self.commandBuffer = commandBuffer
         self.commandEncoder = self.commandBuffer.makeComputeCommandEncoder()!

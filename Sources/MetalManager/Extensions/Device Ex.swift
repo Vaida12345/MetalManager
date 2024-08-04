@@ -5,6 +5,7 @@
 //  Created by Vaida on 7/23/24.
 //
 
+@preconcurrency
 import Metal
 import CoreGraphics
 
@@ -98,24 +99,64 @@ extension MTLDevice {
         return buffer
     }
     
-    /// Creates a MTLTexture from CGImage.
-    ///
-    /// The located texture is in `rgba8Unorm`, which indicates that each pixel has a red, green, blue, and alpha channel, where each channel is an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0).
-    @inlinable
-    public func makeTexture(from image: CGImage, usage: MTLTextureUsage) throws -> any MTLTexture {
+    
+    private func make_texture_from_image_buffer(buffer: UnsafeMutableBufferPointer<UInt8>, source: TextureSource, width: Int, height: Int, context: MetalContext?, usage: MTLTextureUsage) async throws -> any MTLTexture {
+        let date = Date()
         let descriptor = MTLTextureDescriptor()
         descriptor.pixelFormat = .rgba8Unorm
-        descriptor.width = image.width
-        descriptor.height = image.height
+        descriptor.width = width
+        descriptor.height = height
         descriptor.usage = usage
-        descriptor.storageMode = .shared
+        descriptor.storageMode = .private
+        descriptor.textureType = .type2D
         
-        guard let texture = MetalManager.Configuration.shared.computeDevice.makeTexture(descriptor: descriptor) else {
-            throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotCreateEmptyTexture(width: image.width, height: image.height))
+        guard let texture = MetalManager.computeDevice.makeTexture(descriptor: descriptor) else {
+            throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotCreateEmptyTexture(width: width, height: height))
         }
-        texture.label = "Texture from \(image)"
+        print("setup texture took: \(date.distance(to: Date()) * 1000)")
         
-        let context = CGContext(
+        let date3 = Date()
+        let buffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: buffer)
+        print("no copy buffer took", date3.distance(to: Date()) * 1000)
+        let date4 = Date()
+        let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer()!
+        let encoder = commandBuffer.makeBlitCommandEncoder()!
+        print("make encoders took", date4.distance(to: Date()) * 1000)
+        
+        encoder.copy(
+            from: buffer,
+            sourceOffset: 0,
+            sourceBytesPerRow: 4 * width,
+            sourceBytesPerImage: 0,
+            sourceSize: MTLSize(width: width, height: height, depth: 1),
+            to: texture,
+            destinationSlice: 0,
+            destinationLevel: 0,
+            destinationOrigin: MTLOrigin(x: 0, y: 0, z: 0)
+        )
+        encoder.optimizeContentsForGPUAccess(texture: texture)
+        
+        encoder.endEncoding()
+        commandBuffer.commit()
+        
+        if let context {
+            await context.addPrerequisite {
+                commandBuffer.waitUntilCompleted()
+                source.release() // ensure the buffer is still alive.
+            }
+        } else {
+            commandBuffer.waitUntilCompleted()
+            source.release()
+        }
+        
+        print("fill texture took: \(date3.distance(to: Date()) * 1000)")
+        
+        return texture
+    }
+    
+    private func make_texture_using_CGContext(from image: CGImage, context: MetalContext?, usage: MTLTextureUsage) async throws -> any MTLTexture {
+        let date2 = Date()
+        let cgContext = CGContext(
             data: nil,
             width: image.width,
             height: image.height,
@@ -124,19 +165,56 @@ extension MTLDevice {
             space: CGColorSpaceCreateDeviceRGB(),
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         )!
-        context.draw(image, in: CGRect(origin: .zero, size: CGSize(width: image.width, height: image.height)))
+        cgContext.draw(image, in: CGRect(origin: .zero, size: CGSize(width: image.width, height: image.height)))
+        print("setup context took: \(date2.distance(to: Date()) * 1000)")
         
-        texture.replace(
-            region: MTLRegion(
-                origin: MTLOrigin(x: 0, y: 0, z: 0),
-                size: MTLSize(width: image.width, height: image.height, depth: 1)
-            ),
-            mipmapLevel: 0,
-            withBytes: context.data!,
-            bytesPerRow: 4 * image.width
+        return try await make_texture_from_image_buffer(
+            buffer: UnsafeMutableBufferPointer<UInt8>(start: cgContext.data?.assumingMemoryBound(to: UInt8.self), count: image.width * image.height * 4),
+            source: .cgContext(Unmanaged.passRetained(cgContext)),
+            width: image.width,
+            height: image.height,
+            context: context,
+            usage: usage
         )
-        
-        return texture
     }
     
+    /// Creates a MTLTexture from CGImage.
+    ///
+    /// The located texture is in `rgba8Unorm`, which indicates that each pixel has a red, green, blue, and alpha channel, where each channel is an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0).
+    public func makeTexture(from image: CGImage, usage: MTLTextureUsage, context: MetalContext?) async throws -> any MTLTexture {
+        guard image.bitsPerComponent == 8 && image.bitsPerPixel == 32 else {
+            return try await make_texture_using_CGContext(from: image, context: context,  usage: usage)
+        }
+        
+        print("use direct pass")
+        
+        guard let data = image.dataProvider?.data else {
+            throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
+        }
+        
+        return try await make_texture_from_image_buffer(
+            buffer: UnsafeMutableBufferPointer<UInt8>(start: .init(mutating: CFDataGetBytePtr(data)), count: image.width * image.height * 4),
+            source: .cgImage(Unmanaged.passRetained(data)),
+            width: image.width,
+            height: image.height,
+            context: context,
+            usage: usage
+        )
+    }
+    
+}
+
+
+private enum TextureSource: @unchecked Sendable {
+    case cgImage(Unmanaged<CFData>)
+    case cgContext(Unmanaged<CGContext>)
+    
+    func release() {
+        switch self {
+        case .cgImage(let unmanaged):
+            unmanaged.release()
+        case .cgContext(let unmanaged):
+            unmanaged.release()
+        }
+    }
 }

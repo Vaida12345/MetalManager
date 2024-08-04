@@ -14,6 +14,7 @@ public enum MetalResourceCreationError: LocalizedError, CustomStringConvertible 
     /// Indicates failure of `MTLBuffer` creation.
     case cannotCreateBuffer(source: String)
     case cannotCreateTexture(reason: TextureFailureReason)
+    case cannotCreateCGImageFromTexture
     
     
     public var description: String {
@@ -22,6 +23,8 @@ public enum MetalResourceCreationError: LocalizedError, CustomStringConvertible 
             "Failed to create Metal buffer from \(source)"
         case .cannotCreateTexture(let reason):
             "Failed to create Metal texture: \(reason.description)"
+        case .cannotCreateCGImageFromTexture:
+            "Failed to create CGImage form MTLTexture, the texture data is incompatible."
         }
     }
     
