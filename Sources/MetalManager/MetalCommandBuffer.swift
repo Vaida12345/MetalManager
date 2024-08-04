@@ -31,11 +31,15 @@ public final class MetalCommandBuffer: @unchecked Sendable {
     }
     
     /// Performs and waits for completion.
-    public func perform() async {
+    public func perform() async throws {
         self.isEncoded = true
         self.commandEncoder.endEncoding()
         self.commandBuffer.commit()
         self.commandBuffer.waitUntilCompleted()
+        
+        if let error = self.commandBuffer.error {
+            throw error
+        }
     }
     
     deinit {

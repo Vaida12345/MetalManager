@@ -5,6 +5,8 @@
 //  Created by Vaida on 7/29/24.
 //
 
+import Foundation
+
 
 /// The coordinator of execution.
 public final actor MetalContext {
@@ -13,23 +15,28 @@ public final actor MetalContext {
     
     var state: State
     
-    var prerequisites: [() async throws -> Void]
+    var prerequisites: [() throws -> Void]
     
     
     /// Execute the command buffer when required, ensuring all pending jobs are executed.
     ///
     /// - Important: To maximize efficiency, you should aim to evoke this as few as possible.
     public func synchronize() async throws {
-        for prerequisite in prerequisites {
-            try await prerequisite()
+        let date = Date()
+        let prev = prerequisites
+        if !prerequisites.isEmpty {
+            for prerequisite in prerequisites {
+                try await prerequisite()
+            }
+            prerequisites.removeAll()
         }
-        prerequisites.removeAll()
+        print("calc prerequisite of \(prev) took \(date.distance(to: Date()) * 1000)")
         
         guard self.state == .pending else { return }
         
         let buffer = self.commandBuffer
         self.state = .working
-        await buffer.perform()
+        try await buffer.perform()
         self.state = .empty
         
         self.commandBuffer = try await MetalCommandBuffer()
@@ -47,7 +54,7 @@ public final actor MetalContext {
         self.prerequisites = []
     }
     
-    func addPrerequisite(_ work: @escaping @Sendable () async throws -> Void) {
+    func addPrerequisite(_ work: @Sendable @escaping () throws -> Void) {
         print("add work")
         self.prerequisites.append(work)
     }

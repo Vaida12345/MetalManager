@@ -139,10 +139,17 @@ extension MTLDevice {
         encoder.endEncoding()
         commandBuffer.commit()
         
+        let commitDate = Date()
+        
         if let context {
+//            nonisolated(unsafe) let work =
             await context.addPrerequisite {
+                print("\(commitDate.distance(to: Date()) * 1000) since commit")
+                print(commandBuffer.status.rawValue)
+                let date = Date()
                 commandBuffer.waitUntilCompleted()
                 source.release() // ensure the buffer is still alive.
+                print("actual job \(date.distance(to: Date()) * 1000)")
             }
         } else {
             commandBuffer.waitUntilCompleted()
