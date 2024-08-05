@@ -60,7 +60,7 @@ struct MetalManagerTests {
         try await MetalFunction(name: "allEqual", bundle: .module)
             .argument(buffer: buffer)
             .argument(state: result)
-            .dispatch(to: context.addJob(), width: array.count, height: 1)
+            .dispatch(to: context, width: array.count, height: 1)
         
         try await context.synchronize()
         try await #expect(result.synchronize() == false)
