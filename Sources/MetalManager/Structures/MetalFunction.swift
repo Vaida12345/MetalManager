@@ -22,6 +22,12 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
     let bundle: Bundle
     
     
+    @inlinable
+    public func _get_encoder() -> MetalCommandEncoder? {
+        nil
+    }
+    
+    
     public func hash(into hasher: inout Hasher) {
         hasher.combine(self.name)
         hasher.combine(bundle)
@@ -98,11 +104,6 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
         public var description: String {
             self.errorDescription! + ": " + self.failureReason!
         }
-    }
-    
-    @inlinable
-    public var _arguments: [MetalArgumentFunction.Argument] {
-        []
     }
     
     @inlinable

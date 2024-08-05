@@ -9,42 +9,44 @@ import Metal
 
 
 /// A class with info about the command buffer and command encoder.
+///
+/// A command buffer only contains information to construct a `MTLComputeCommandBuffer`, hence you can discard `MetalCommandBuffer` whenever you want.
 public final class MetalCommandBuffer: @unchecked Sendable {
     
-    /// The sets of command associated with this metal manager.
-    internal let commandBuffer: any MTLCommandBuffer
+    private var encoders: [MetalCommandEncoder]
     
-    internal let commandEncoder: any MTLComputeCommandEncoder
-    
-    private var isEncoded = false
-    
-    
-    public init() async throws {
-        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw MetalManager.Error.cannotCreateMetalCommandBuffer }
-        commandBuffer.label = "CommandBuffer(for: some MetalCommandBuffer)"
-        self.commandBuffer = commandBuffer
-        self.commandEncoder = self.commandBuffer.makeComputeCommandEncoder()!
+    func add(encoder: MetalCommandEncoder) {
+        self.encoders.append(encoder)
     }
     
-    public func getCommandBuffer() -> any MTLCommandBuffer {
-        self.commandBuffer
+    public init() {
+        self.encoders = []
     }
     
     /// Performs and waits for completion.
+    ///
+    /// This function contains a suspension point after the command buffer has been committed. This function will not return while the command buffer it creates is alive.
     public func perform() async throws {
-        self.isEncoded = true
-        self.commandEncoder.endEncoding()
-        self.commandBuffer.commit()
-        self.commandBuffer.waitUntilCompleted()
+        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw MetalManager.Error.cannotCreateMetalCommandBuffer }
+        commandBuffer.label = "CommandBuffer(encoders: \(self.encoders))"
         
-        if let error = self.commandBuffer.error {
+        let commandEncoder = commandBuffer.makeComputeCommandEncoder()!
+        
+        for encoder in encoders {
+            encoder.encode(to: commandEncoder)
+        }
+        
+        commandEncoder.endEncoding()
+        
+        commandBuffer.commit()
+        
+        await Task.yield()
+        
+        commandBuffer.waitUntilCompleted()
+        
+        if let error = commandBuffer.error {
             throw error
         }
-    }
-    
-    deinit {
-        guard !self.isEncoded else { return }
-        self.commandEncoder.endEncoding()
     }
     
 }

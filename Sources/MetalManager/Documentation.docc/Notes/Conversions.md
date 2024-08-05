@@ -7,11 +7,11 @@ Convert common swift structures with their Metal counterpart.
 
 ### CGImage
 
-- ``Metal/MTLDevice/makeTexture(from:usage:)``
+- ``Metal/MTLDevice/makeTexture(from:usage:context:)``
 
 ### MTLTexture
-- ``Metal/MTLTexture/makeBuffer(channelsCount:)``
-- ``Metal/MTLTexture/makeCGImage(colorSpace:)``
+- ``Metal/MTLTexture/makeBuffer(channelsCount:bitsPerComponent:)``
+- ``Metal/MTLTexture/makeCGImage(channelsCount:bitsPerComponent:colorSpace:bitmapInfo:)``
 
 ### Arrays
 
@@ -22,6 +22,7 @@ Convert common swift structures with their Metal counterpart.
 
 - ``Metal/MTLDevice/makeBuffer(bytes:options:)``
 - ``Metal/MTLDevice/makeBuffer(bytesNoCopy:options:deallocator:)``
+- ``Metal/MTLBuffer/cast(to:count:)``
 
 ### Conversion Error
 

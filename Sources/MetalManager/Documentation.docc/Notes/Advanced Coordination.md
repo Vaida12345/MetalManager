@@ -28,7 +28,7 @@ let buffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: &array)
 Now, instead of using ``MetalCommandBuffer``, we can use ``MetalContext`` for advanced coordinations.
 
 ```swift
-let context = try await MetalContext()
+let context = MetalContext()
 ```
 
 For the buffer storing the `result`, we can use ``MetalDependentState``. Such structure would ensure the only way you can access the buffer is *after* it has been synchronized via  ``MetalDependentState/synchronize()``.
@@ -43,7 +43,7 @@ Add the job to the context.
 try await MetalFunction(name: "allEqual", bundle: .module)
     .argument(buffer: buffer)
     .argument(state: result)
-    .dispatch(to: context.addJob(), width: array.count)
+    .dispatch(to: context, width: array.count)
 ```
 
 The job is now submitted, and it won't execute until you call either

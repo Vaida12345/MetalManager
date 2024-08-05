@@ -9,6 +9,8 @@ import Foundation
 
 
 /// The coordinator of execution.
+///
+/// A context only contains information to perform the functions linked to it. Metal resources and functions are created only when `synchronize()` is called. Hence it is safe to discard any context at any time.
 public final actor MetalContext {
     
     var commandBuffer: MetalCommandBuffer
@@ -26,7 +28,7 @@ public final actor MetalContext {
         let prev = prerequisites
         if !prerequisites.isEmpty {
             for prerequisite in prerequisites {
-                try await prerequisite()
+                try prerequisite()
             }
             prerequisites.removeAll()
         }
@@ -39,17 +41,17 @@ public final actor MetalContext {
         try await buffer.perform()
         self.state = .empty
         
-        self.commandBuffer = try await MetalCommandBuffer()
+        self.commandBuffer = MetalCommandBuffer()
     }
     
-    public func addJob() async throws -> MetalCommandBuffer {
+    func addJob() -> MetalCommandBuffer {
         self.state = .pending
         return self.commandBuffer
     }
     
     
-    public init() async throws {
-        self.commandBuffer = try await MetalCommandBuffer()
+    public init() {
+        self.commandBuffer = MetalCommandBuffer()
         self.state = .empty
         self.prerequisites = []
     }

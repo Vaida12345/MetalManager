@@ -45,7 +45,7 @@ Define the command buffer. This buffer is used to hold each individual metal fun
 Command buffers created by calling the ``MetalCommandBuffer/init()`` initializer uses the command queue that is shared between all command buffers of the MetalManager package.
 
 ```
-let commandBuffer = try await MetalCommandBuffer()
+let commandBuffer = MetalCommandBuffer()
 ```
 
 Define the functions, sets the buffers and parameters, then dispatch to the command buffer created earlier.
@@ -67,7 +67,7 @@ Please note that these functions are not executed at this point.
 Execute and wait for metal completion.
 
 ``` swift
-await commandBuffer.perform()
+try await commandBuffer.perform()
 ```
 
 ## Comparison

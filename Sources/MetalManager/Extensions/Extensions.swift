@@ -22,6 +22,20 @@ extension MTLTextureUsage {
 }
 
 
+extension MTLBuffer {
+    
+    /// Load the shared contents of the buffer as the given type.
+    ///
+    /// - Experiment: You do not need to free the returned buffer.
+    public func cast<T>(to type: T.Type, count: Int) -> UnsafeMutableBufferPointer<T> {
+        let contents = self.contents()
+        
+        return UnsafeMutableBufferPointer<T>(start: contents.assumingMemoryBound(to: T.self), count: count)
+    }
+    
+}
+
+
 extension MTLTexture {
     
     /// Creates buffer from the given texture.

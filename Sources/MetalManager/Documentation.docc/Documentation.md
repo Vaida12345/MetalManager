@@ -17,8 +17,6 @@ An interface for interacting with the `Metal` framework.
 
 ## Overview
 
-Using `Metal` might not always be the best choice. In experiments, it was found that the ``MetalManager/MetalManager/perform(gridSize:)`` methods takes at least `1ms` to complete. Please avoid using `Metal` when the computation size, ie, the `input` and `output` size is small.
-
 `Metal` is most suitable for calculating large quantity of data in parallel.
 
 
@@ -83,6 +81,7 @@ These structures are implementation details, and generally do not concern the us
 
 - ``MetalArgumentFunction``
 - ``MetalFunctionProtocol``
+- ``MetalCommandEncoder``
 
 
 ### Manager
