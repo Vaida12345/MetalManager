@@ -162,7 +162,6 @@ public struct TextureView: NSViewRepresentable {
         }
         
         public func draw(in view: MTKView) {
-            
             guard let drawable = view.currentDrawable,
                   let texture = texture,
                   let pipelineState = pipelineState,
@@ -184,6 +183,8 @@ public struct TextureView: NSViewRepresentable {
             
             commandBuffer.present(drawable)
             commandBuffer.commit()
+            
+            commandBuffer.waitUntilCompleted()
         }
         
         @MainActor
