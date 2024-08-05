@@ -137,6 +137,9 @@ extension MTLDevice {
         encoder.optimizeContentsForGPUAccess(texture: texture)
         
         encoder.endEncoding()
+        commandBuffer.addCompletedHandler { _ in
+            source.release() // ensure the buffer is still alive.
+        }
         commandBuffer.commit()
         
         let commitDate = Date()
@@ -148,12 +151,12 @@ extension MTLDevice {
                 print(commandBuffer.status.rawValue)
                 let date = Date()
                 commandBuffer.waitUntilCompleted()
-                source.release() // ensure the buffer is still alive.
                 print("actual job \(date.distance(to: Date()) * 1000)")
             }
         } else {
+            let date = Date()
             commandBuffer.waitUntilCompleted()
-            source.release()
+            print("wait for completion (as no context) \(date.distance(to: Date()) * 1000)")
         }
         
         print("fill texture took: \(date3.distance(to: Date()) * 1000)")
@@ -174,6 +177,8 @@ extension MTLDevice {
         )!
         cgContext.draw(image, in: CGRect(origin: .zero, size: CGSize(width: image.width, height: image.height)))
         print("setup context took: \(date2.distance(to: Date()) * 1000)")
+        
+        try Task.checkCancellation()
         
         return try await make_texture_from_image_buffer(
             buffer: UnsafeMutableBufferPointer<UInt8>(start: cgContext.data?.assumingMemoryBound(to: UInt8.self), count: image.width * image.height * 4),

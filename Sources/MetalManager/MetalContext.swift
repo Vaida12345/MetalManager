@@ -17,7 +17,7 @@ public final actor MetalContext {
     
     var state: State
     
-    var prerequisites: [() throws -> Void]
+    var prerequisites: [@Sendable () throws -> Void]
     
     
     /// Execute the command buffer when required, ensuring all pending jobs are executed.
