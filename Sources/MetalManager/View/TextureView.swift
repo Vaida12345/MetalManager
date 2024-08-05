@@ -17,6 +17,8 @@ public struct TextureView: NSViewRepresentable {
     
     let contentMode: ContentMode?
     
+    let isPaused: Bool
+    
     
     public func makeCoordinator() -> Coordinator {
         Coordinator(cache: Coordinator.Cache())
@@ -24,10 +26,14 @@ public struct TextureView: NSViewRepresentable {
     
     public func makeNSView(context: Context) -> MTKView {
         let view = MTKView()
-        view.device = MTLCreateSystemDefaultDevice()
+        view.device = MetalManager.computeDevice
         view.delegate = context.coordinator
         view.enableSetNeedsDisplay = true
-        view.isPaused = true
+        view.isPaused = isPaused
+        view.colorPixelFormat = .rgba8Unorm
+        view.clearColor = MTLClearColorMake(0, 0, 0, 0)
+        view.layer?.isOpaque = false
+        
         context.coordinator.setupPipeline(view: view)
         return view
     }
@@ -57,12 +63,13 @@ public struct TextureView: NSViewRepresentable {
     /// - Parameters:
     ///   - contentMode: A flag indicating whether this view should fit or fill the parent context.
     public func aspectRatio(contentMode: ContentMode) -> TextureView {
-        TextureView(texture: self.texture, aspectRatio: contentMode)
+        TextureView(texture: self.texture, aspectRatio: contentMode, isPaused: isPaused)
     }
     
-    public init(texture: MTLTexture, aspectRatio contentMode: ContentMode? = nil) {
+    public init(texture: MTLTexture, aspectRatio contentMode: ContentMode? = nil, isPaused: Bool = true) {
         self.texture = texture
         self.contentMode = contentMode
+        self.isPaused = isPaused
     }
     
     
@@ -71,6 +78,8 @@ public struct TextureView: NSViewRepresentable {
         var texture: MTLTexture?
         
         var pipelineState: MTLRenderPipelineState?
+        
+        var vertexBuffer: MTLBuffer?
         
         let cache: Cache
         
@@ -126,16 +135,26 @@ public struct TextureView: NSViewRepresentable {
             pipelineDescriptor.fragmentFunction = fragmentFunction
             pipelineDescriptor.vertexDescriptor = vertexDescriptor
             pipelineDescriptor.colorAttachments[0].pixelFormat = view.colorPixelFormat
+            
             // Enable blending
             pipelineDescriptor.colorAttachments[0].isBlendingEnabled = true
             pipelineDescriptor.colorAttachments[0].rgbBlendOperation = .add
-            pipelineDescriptor.colorAttachments[0].alphaBlendOperation = .add
+            pipelineDescriptor.colorAttachments[0].alphaBlendOperation = .max
             pipelineDescriptor.colorAttachments[0].sourceRGBBlendFactor = .sourceAlpha
             pipelineDescriptor.colorAttachments[0].sourceAlphaBlendFactor = .sourceAlpha
             pipelineDescriptor.colorAttachments[0].destinationRGBBlendFactor = .oneMinusSourceAlpha
             pipelineDescriptor.colorAttachments[0].destinationAlphaBlendFactor = .oneMinusSourceAlpha
             
             pipelineState = try! device.makeRenderPipelineState(descriptor: pipelineDescriptor)
+            
+            let vertices: [Float] = [
+                -1, -1, 0, 1, 0, 1,  // Vertex 1: position (-1, -1) and texture coordinate (0, 1)
+                 1, -1, 0, 1, 1, 1,  // Vertex 2: position ( 1, -1) and texture coordinate (1, 1)
+                 -1,  1, 0, 1, 0, 0,  // Vertex 3: position (-1,  1) and texture coordinate (0, 0)
+                 1,  1, 0, 1, 1, 0   // Vertex 4: position ( 1,  1) and texture coordinate (1, 0)
+            ]
+            
+            vertexBuffer = view.device!.makeBuffer(bytes: vertices, length: MemoryLayout<Float>.size * vertices.count, options: [])
         }
         
         public func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {
@@ -147,24 +166,13 @@ public struct TextureView: NSViewRepresentable {
             guard let drawable = view.currentDrawable,
                   let texture = texture,
                   let pipelineState = pipelineState,
-                  let commandQueue = view.device?.makeCommandQueue(),
-                  let commandBuffer = commandQueue.makeCommandBuffer(),
+                  let commandBuffer = cache.commandQueue.makeCommandBuffer(),
                   let renderPassDescriptor = view.currentRenderPassDescriptor else {
                 return
             }
             
-            let vertices: [Float] = [
-                -1, -1, 0, 1, 0, 1,  // Vertex 1: position (-1, -1) and texture coordinate (0, 1)
-                 1, -1, 0, 1, 1, 1,  // Vertex 2: position ( 1, -1) and texture coordinate (1, 1)
-                -1,  1, 0, 1, 0, 0,  // Vertex 3: position (-1,  1) and texture coordinate (0, 0)
-                 1,  1, 0, 1, 1, 0   // Vertex 4: position ( 1,  1) and texture coordinate (1, 0)
-            ]
-            
-            let vertexBuffer = view.device!.makeBuffer(bytes: vertices, length: MemoryLayout<Float>.size * vertices.count, options: [])
-            
             renderPassDescriptor.colorAttachments[0].texture = drawable.texture
             renderPassDescriptor.colorAttachments[0].loadAction = .clear
-            renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColorMake(0, 0, 0, 1)
             renderPassDescriptor.colorAttachments[0].storeAction = .store
             
             let encoder = commandBuffer.makeRenderCommandEncoder(descriptor: renderPassDescriptor)!
@@ -187,7 +195,7 @@ public struct TextureView: NSViewRepresentable {
             
             var pipelineStates: [MetalFunction : MTLComputePipelineState] = [:]
             
-            lazy var commandQueue: MTLCommandQueue = MetalManager.Configuration.shared.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
+            lazy var commandQueue: MTLCommandQueue = MetalManager.computeDevice.makeCommandQueue(maxCommandBufferCount: 1)!
             
             
             init() {
