@@ -8,6 +8,7 @@
 @preconcurrency
 import Metal
 import CoreGraphics
+import MetalKit
 
 
 extension MetalManager {
@@ -194,11 +195,19 @@ extension MTLDevice {
     ///
     /// The located texture is in `rgba8Unorm`, which indicates that each pixel has a red, green, blue, and alpha channel, where each channel is an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0).
     public func makeTexture(from image: CGImage, usage: MTLTextureUsage, context: MetalContext?) async throws -> any MTLTexture {
+        let date = Date()
+        defer {
+            print("load texture", date.distance(to: Date()) * 1000)
+        }
+        
         guard image.bitsPerComponent == 8 && image.bitsPerPixel == 32 else {
             return try await make_texture_using_CGContext(from: image, context: context,  usage: usage)
         }
         
         print("use direct pass")
+        
+        let loader = MTKTextureLoader(device: self)
+        return try await loader.newTexture(cgImage: image, options: [.textureUsage: usage.rawValue, .textureStorageMode: MTLStorageMode.private.rawValue])
         
         guard let data = image.dataProvider?.data else {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
