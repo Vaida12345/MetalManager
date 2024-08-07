@@ -25,8 +25,9 @@ vertex VertexOut textureView_vertex(VertexIn in [[stage_in]]) {
     return out;
 }
 
-fragment float4 textureView_fragment(VertexOut in [[stage_in]],
-                                     texture2d<float> texture [[texture(0)]]) {
+
+fragment half4 textureView_fragment(VertexOut in [[stage_in]],
+                                    texture2d<half> texture [[texture(0)]]) {
     constexpr sampler textureSampler (mag_filter::linear, min_filter::linear);
     return texture.sample(textureSampler, in.texCoord);
 }
