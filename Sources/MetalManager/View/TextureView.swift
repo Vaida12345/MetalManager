@@ -122,7 +122,7 @@ public struct TextureView: NSViewRepresentable {
             }
             
             let vertexDescriptor = MTLVertexDescriptor()
-            vertexDescriptor.attributes[0].format = .half4
+            vertexDescriptor.attributes[0].format = .float4
             vertexDescriptor.attributes[0].offset = 0
             vertexDescriptor.attributes[0].bufferIndex = 0
             vertexDescriptor.attributes[1].format = .float2
