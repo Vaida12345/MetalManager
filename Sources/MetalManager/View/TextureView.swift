@@ -5,12 +5,13 @@
 //  Created by Vaida on 7/19/24.
 //
 
-#if canImport(SwiftUI)
+#if canImport(SwiftUI) && os(macOS)
 import SwiftUI
 import MetalKit
 
 
 /// A view that renders the texture with the provided aspect ratio content mode. This view behaves similar to `SwiftUI.Image`.
+@available(macOS 13.0, *)
 public struct TextureView: NSViewRepresentable {
     
     let texture: MTLTexture

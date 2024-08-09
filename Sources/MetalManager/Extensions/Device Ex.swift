@@ -206,9 +206,6 @@ extension MTLDevice {
         
         print("use direct pass")
         
-        let loader = MTKTextureLoader(device: self)
-        return try await loader.newTexture(cgImage: image, options: [.textureUsage: usage.rawValue, .textureStorageMode: MTLStorageMode.private.rawValue])
-        
         guard let data = image.dataProvider?.data else {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
         }

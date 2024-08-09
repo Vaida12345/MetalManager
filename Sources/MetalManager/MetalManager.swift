@@ -31,7 +31,7 @@ public final class MetalManager {
     ///
     /// Call this to facilitate faster execution, for example, when launching the app.
     public static func prepareCache() async {
-        guard await !MetalManager._is_cache_prepared else { return }
+        guard !MetalManager._is_cache_prepared else { return }
         MetalManager._is_cache_prepared = true
         
         let _ = Cache.shared.commandQueue
