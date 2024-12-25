@@ -200,7 +200,8 @@ extension MTLDevice {
             print("load texture", date.distance(to: Date()) * 1000)
         }
         
-        guard image.bitsPerComponent == 8 && image.bitsPerPixel == 32 else {
+        guard image.bitsPerComponent == 8 && image.bitsPerPixel == 32,
+                image.bitmapInfo.rawValue == CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue else {
             return try await make_texture_using_CGContext(from: image, context: context,  usage: usage)
         }
         

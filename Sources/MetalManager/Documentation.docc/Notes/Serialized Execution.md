@@ -9,7 +9,7 @@ In the previous implementation of MetalManager, or with the ``MetalArgumentFunct
 
 ## Solution
 
-Now with ``MetalCommandBuffer`` and ``MetalArgumentFunction/dispatch(to:width:height:depth:)``, you could commit multiple functions at once.
+Now with ``MetalCommandBuffer`` and ``MetalArgumentFunction/dispatch(to:width:height:depth:)-6gdmq``, you could commit multiple functions at once.
 
 ### Example
 
