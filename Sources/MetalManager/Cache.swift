@@ -18,7 +18,7 @@ actor Cache {
     var pipelineStates: [MetalFunction : MTLComputePipelineState] = [:]
     
     nonisolated(unsafe)
-    lazy var commandQueue: MTLCommandQueue = MetalManager.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
+    var commandQueue: MTLCommandQueue = MetalManager.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
     
     
     static let shared = Cache()
