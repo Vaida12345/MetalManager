@@ -37,12 +37,14 @@ public final class MetalCommandBuffer: @unchecked Sendable {
         }
         
         commandEncoder.endEncoding()
-        
         commandBuffer.commit()
         
+#if swift(>=6.2)
+        await commandBuffer.completed()
+#else
         await Task.yield()
-        
         commandBuffer.waitUntilCompleted()
+#endif
         
         if let error = commandBuffer.error {
             throw error

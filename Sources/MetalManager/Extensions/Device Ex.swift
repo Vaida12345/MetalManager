@@ -40,7 +40,7 @@ extension MTLDevice {
         bytes buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = []
     ) throws -> any MTLBuffer {
-        let label =  "copied from \(buffer.debugDescription)"
+        let label = "copied from \(buffer.debugDescription)"
         guard let buffer = self.makeBuffer(bytes: buffer.baseAddress!, length: buffer.count &* MemoryLayout<T>.stride, options: options) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
         }
@@ -143,30 +143,22 @@ extension MTLDevice {
         }
         commandBuffer.commit()
         
-        let commitDate = Date()
-        
         if let context {
-//            nonisolated(unsafe) let work =
             await context.addPrerequisite {
-                print("\(commitDate.distance(to: Date()) * 1000) since commit")
-                print(commandBuffer.status.rawValue)
-                let date = Date()
                 commandBuffer.waitUntilCompleted()
-                print("actual job \(date.distance(to: Date()) * 1000)")
             }
         } else {
-            let date = Date()
+#if swift(>=6.2)
+            await commandBuffer.completed()
+#else
             commandBuffer.waitUntilCompleted()
-            print("wait for completion (as no context) \(date.distance(to: Date()) * 1000)")
+#endif
         }
-        
-        print("fill texture took: \(date3.distance(to: Date()) * 1000)")
         
         return texture
     }
     
     private func make_texture_using_CGContext(from image: CGImage, context: MetalContext?, usage: MTLTextureUsage) async throws -> any MTLTexture {
-        let date2 = Date()
         let cgContext = CGContext(
             data: nil,
             width: image.width,
@@ -177,7 +169,6 @@ extension MTLDevice {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         )!
         cgContext.draw(image, in: CGRect(origin: .zero, size: CGSize(width: image.width, height: image.height)))
-        print("setup context took: \(date2.distance(to: Date()) * 1000)")
         
         try Task.checkCancellation()
         
@@ -195,17 +186,10 @@ extension MTLDevice {
     ///
     /// The located texture is in `rgba8Unorm`, which indicates that each pixel has a red, green, blue, and alpha channel, where each channel is an 8-bit unsigned normalized value (i.e. 0 maps to 0.0 and 255 maps to 1.0).
     public func makeTexture(from image: CGImage, usage: MTLTextureUsage, context: MetalContext?) async throws -> any MTLTexture {
-        let date = Date()
-        defer {
-            print("load texture", date.distance(to: Date()) * 1000)
-        }
-        
         guard image.bitsPerComponent == 8 && image.bitsPerPixel == 32,
                 image.bitmapInfo.rawValue == CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue else {
             return try await make_texture_using_CGContext(from: image, context: context,  usage: usage)
         }
-        
-        print("use direct pass")
         
         guard let data = image.dataProvider?.data else {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotObtainImageData(image: image))
