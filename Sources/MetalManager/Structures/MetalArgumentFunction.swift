@@ -102,6 +102,14 @@ public extension MetalFunctionProtocol {
         return MetalArgumentFunction(function: self._function, encoder: encoder)
     }
     
+    /// Binds a sampler to the sampler argument table, allowing compute kernels to access its data on the GPU.
+    consuming func argument(sampler: MTLSamplerDescriptor) -> MetalArgumentFunction {
+        let encoder = self._get_encoder() ?? MetalCommandEncoder(function: self._function)
+        encoder.setSampler(sampler)
+        
+        return MetalArgumentFunction(function: self._function, encoder: encoder)
+    }
+    
 }
 
 

@@ -21,6 +21,8 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
     
     private var textures: [any MTLTexture]
     
+    private var samplers: [MTLSamplerDescriptor]
+    
     internal var dispatchSize: MTLSize?
     
     internal var pipelineState: (any MTLComputePipelineState)?
@@ -62,6 +64,7 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
         }
         
         encoder.setTextures(textures, range: 0..<textures.count)
+        encoder.setSamplerStates(self.samplers.map({ MetalManager.computeDevice.makeSamplerState(descriptor: $0) }), range: 0..<samplers.count)
         
         encoder.label = "Encoder(for: \(function.name), textureCount: \(textures.count), bufferCount: \(bufferCount), dispatchSize: \(dispatchSize!))"
         
@@ -104,6 +107,7 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
         self.textures = []
         self.dispatchSize = nil
         self.pipelineState = nil
+        self.samplers = []
     }
     
     
@@ -123,6 +127,10 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
     public func setBytes(_ pointer: UnsafeRawPointer, length: Int, deallocator: Data.Deallocator) {
         self.bytes.append((pointer, length, deallocator, self.bufferCount))
         self.bufferCount += 1
+    }
+    
+    public func setSampler(_ sampler: MTLSamplerDescriptor) {
+        self.samplers.append(sampler)
     }
     
     public func setTexture(_ texture: any MTLTexture) {
