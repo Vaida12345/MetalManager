@@ -64,7 +64,9 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
         }
         
         encoder.setTextures(textures, range: 0..<textures.count)
-        encoder.setSamplerStates(self.samplers.map({ MetalManager.computeDevice.makeSamplerState(descriptor: $0) }), range: 0..<samplers.count)
+        if !self.samplers.isEmpty {
+            encoder.setSamplerStates(self.samplers.map({ MetalManager.computeDevice.makeSamplerState(descriptor: $0) }), range: 0..<samplers.count)
+        }
         
         encoder.label = "Encoder(for: \(function.name), textureCount: \(textures.count), bufferCount: \(bufferCount), dispatchSize: \(dispatchSize!))"
         
