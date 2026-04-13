@@ -15,6 +15,10 @@ public final class MetalCommandBuffer: @unchecked Sendable {
     
     private var encoders: [MetalCommandEncoder]
     
+    var hasPendingEncoders: Bool {
+        !self.encoders.isEmpty
+    }
+    
     func add(encoder: MetalCommandEncoder) {
         self.encoders.append(encoder)
     }
@@ -27,10 +31,17 @@ public final class MetalCommandBuffer: @unchecked Sendable {
     ///
     /// This function contains a suspension point after the command buffer has been committed. This function will not return while the command buffer it creates is alive.
     public func perform() async throws {
-        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw MetalManager.Error.cannotCreateMetalCommandBuffer }
-        commandBuffer.label = "CommandBuffer(encoders: \(self.encoders))"
+        guard self.hasPendingEncoders else { return }
         
-        let commandEncoder = commandBuffer.makeComputeCommandEncoder()!
+        let encoders = self.encoders
+        self.encoders.removeAll(keepingCapacity: true)
+        
+        guard let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer() else { throw MetalManager.Error.cannotCreateMetalCommandBuffer }
+        commandBuffer.label = "CommandBuffer(encoderCount: \(encoders.count))"
+        
+        guard let commandEncoder = commandBuffer.makeComputeCommandEncoder() else {
+            throw MetalManager.Error.cannotCreateMetalCommandEncoder
+        }
         
         for encoder in encoders {
             encoder.encode(to: commandEncoder)

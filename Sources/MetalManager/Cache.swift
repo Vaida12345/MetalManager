@@ -16,6 +16,8 @@ actor Cache {
     var functions: [MetalFunction : MTLFunction] = [:]
     
     var pipelineStates: [MetalFunction : MTLComputePipelineState] = [:]
+
+    private var pipelineBuildTasks: [MetalFunction : Task<MTLComputePipelineState, any Error>] = [:]
     
     nonisolated(unsafe)
     var commandQueue: MTLCommandQueue = MetalManager.computeDevice.makeCommandQueue(maxCommandBufferCount: MetalManager.Configuration.shared.commandQueueLength)!
@@ -63,20 +65,32 @@ actor Cache {
         
         return library
     }
-    
-    static func getPipeline(for function: MetalFunction, library: any MTLLibrary) async throws -> any MTLComputePipelineState {
-        let device = MetalManager.computeDevice
-        let pipelineState: any MTLComputePipelineState
-        if let pipeLine = await Cache.shared.pipelineState(for: function) {
-            pipelineState = pipeLine
-        } else {
-            let metalFunction = try await function.makeFunction(library: library)
-            let pipe = try await device.makeComputePipelineState(function: metalFunction)
-            await Cache.shared.set(pipelineState: pipe, key: function)
-            pipelineState = pipe
+
+    func getPipeline(for function: MetalFunction, library: any MTLLibrary) async throws -> any MTLComputePipelineState {
+        if let pipelineState = self.pipelineState(for: function) {
+            return pipelineState
         }
-        
-        return pipelineState
+
+        if let task = self.pipelineBuildTasks[function] {
+            return try await task.value
+        }
+
+        let buildTask = Task {
+            let metalFunction = try await function.makeFunction(library: library)
+            return try await MetalManager.computeDevice.makeComputePipelineState(function: metalFunction)
+        }
+
+        self.pipelineBuildTasks[function] = buildTask
+
+        do {
+            let pipelineState = try await buildTask.value
+            self.set(pipelineState: pipelineState, key: function)
+            self.pipelineBuildTasks[function] = nil
+            return pipelineState
+        } catch {
+            self.pipelineBuildTasks[function] = nil
+            throw error
+        }
     }
     
 }

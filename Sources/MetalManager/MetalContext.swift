@@ -24,15 +24,12 @@ public final actor MetalContext {
     ///
     /// - Important: To maximize efficiency, you should aim to evoke this as few as possible.
     public func synchronize() async throws {
-        let date = Date()
-        let prev = prerequisites
         if !prerequisites.isEmpty {
             for prerequisite in prerequisites {
                 try prerequisite()
             }
-            prerequisites.removeAll()
+            prerequisites.removeAll(keepingCapacity: true)
         }
-        print("calc prerequisite of \(prev) took \(date.distance(to: Date()) * 1000)")
         
         guard self.state == .pending else { return }
         
@@ -40,8 +37,6 @@ public final actor MetalContext {
         self.state = .working
         try await buffer.perform()
         self.state = .empty
-        
-        self.commandBuffer = MetalCommandBuffer()
     }
     
     func addJob() -> MetalCommandBuffer {
@@ -56,8 +51,8 @@ public final actor MetalContext {
         self.prerequisites = []
     }
     
+    /// Adds CPU-side prerequisite work that must finish before the next synchronization runs GPU work.
     func addPrerequisite(_ work: @Sendable @escaping () throws -> Void) {
-        print("add work")
         self.prerequisites.append(work)
     }
     

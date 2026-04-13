@@ -36,6 +36,12 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
         }
     }
     
+    /// Returns a new function descriptor specialized with a function constant value.
+    ///
+    /// - Parameters:
+    ///   - value: The constant value to encode.
+    ///   - type: The Metal constant data type for `value`.
+    /// - Returns: A new `MetalFunction` that includes the additional constant.
     public consuming func constant<T>(_ value: T, type: MTLDataType) -> MetalFunction where T: Hashable {
         let hash = value.hashValue
         let buffer = UnsafeMutablePointer<T>.allocate(capacity: 1)
@@ -44,25 +50,31 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
         return MetalFunction(name: self.name, constants: self.constants + [(UnsafeRawPointer(buffer), type, hash)], bundle: self.bundle)
     }
     
+    /// Resolves and caches the concrete Metal function from the provided library.
     internal func makeFunction(library: MTLLibrary) async throws -> MTLFunction {
         if let function = await Cache.shared.function(for: self) {
             return function
         }
         
-        let function: (any MTLFunction)?
+        let function: any MTLFunction
         if constants.isEmpty {
-            function = library.makeFunction(name: name)
-        } else {
-            let constants = MTLFunctionConstantValues()
-            for (index, constant) in self.constants.enumerated() {
-                constants.setConstantValue(constant.value, type: constant.type, index: index)
-                constant.value.deallocate()
+            guard let created = library.makeFunction(name: name) else {
+                throw Error.cannotCreateFunction(name: self.name)
             }
-            function = library.makeFunction(name: name)
+            function = created
+        } else {
+            let constantValues = MTLFunctionConstantValues()
+            for (index, constant) in self.constants.enumerated() {
+                constantValues.setConstantValue(constant.value, type: constant.type, index: index)
+            }
+            defer {
+                for constant in self.constants {
+                    constant.value.deallocate()
+                }
+            }
+            function = try await library.makeFunction(name: name, constantValues: constantValues)
         }
-        
-        guard let function else { throw Error.cannotCreateFunction(name: self.name) }
-        
+
         function.label = "Function<\(self.name)>(constants: \(self.constants))"
         await Cache.shared.set(function: function, key: self)
         
@@ -81,7 +93,9 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
     }
     
     public static func == (_ lhs: MetalFunction, _ rhs: MetalFunction) -> Bool {
-        guard lhs.name == rhs.name && lhs.constants.count == rhs.constants.count else { return false }
+        guard lhs.name == rhs.name,
+              lhs.bundle == rhs.bundle,
+              lhs.constants.count == rhs.constants.count else { return false }
         for (lhs, rhs) in zip(lhs.constants, rhs.constants) {
             guard lhs.hash == rhs.hash else { return false }
         }

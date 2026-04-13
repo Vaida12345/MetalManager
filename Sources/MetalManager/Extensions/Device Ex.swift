@@ -59,10 +59,13 @@ extension MTLDevice {
     public func makeBuffer<T>(
         bytesNoCopy buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = [],
-        deallocator: ((UnsafeMutableRawPointer, Int) -> Void)? = nil
+        deallocator: (@Sendable (UnsafeMutableRawPointer, Int) -> Void)? = nil
     ) throws -> any MTLBuffer {
+        guard let baseAddress = buffer.baseAddress else {
+            throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
+        }
         let label = "no copy from \(buffer.debugDescription)"
-        guard let buffer = self.makeBuffer(bytesNoCopy: buffer.baseAddress!, length: buffer.count &* MemoryLayout<T>.stride, options: options, deallocator: deallocator) else {
+        guard let buffer = self.makeBuffer(bytesNoCopy: baseAddress, length: buffer.count &* MemoryLayout<T>.stride, options: options, deallocator: deallocator) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
         }
         buffer.label = label
@@ -76,6 +79,7 @@ extension MTLDevice {
         bytesNoCopy array: inout Array<T>,
         options: MTLResourceOptions = []
     ) throws -> any MTLBuffer {
+        guard !array.isEmpty else { throw MetalResourceCreationError.cannotCreateBuffer(source: array.description) }
         let label = "no copy from \(array.debugDescription)"
         guard let buffer = self.makeBuffer(bytesNoCopy: &array, length: array.count &* MemoryLayout<T>.stride, options: options, deallocator: .none) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: array.description)
@@ -101,8 +105,8 @@ extension MTLDevice {
     }
     
     
+    /// Creates a private texture and schedules a blit copy from an RGBA8 source buffer.
     private func make_texture_from_image_buffer(buffer: UnsafeMutableBufferPointer<UInt8>, source: TextureSource, width: Int, height: Int, context: MetalContext?, usage: MTLTextureUsage) async throws -> any MTLTexture {
-        let date = Date()
         let descriptor = MTLTextureDescriptor()
         descriptor.pixelFormat = .rgba8Unorm
         descriptor.width = width
@@ -114,15 +118,10 @@ extension MTLDevice {
         guard let texture = MetalManager.computeDevice.makeTexture(descriptor: descriptor) else {
             throw MetalResourceCreationError.cannotCreateTexture(reason: .cannotCreateEmptyTexture(width: width, height: height))
         }
-        print("setup texture took: \(date.distance(to: Date()) * 1000)")
         
-        let date3 = Date()
         let buffer = try MetalManager.computeDevice.makeBuffer(bytesNoCopy: buffer)
-        print("no copy buffer took", date3.distance(to: Date()) * 1000)
-        let date4 = Date()
         let commandBuffer = Cache.shared.commandQueue.makeCommandBuffer()!
         let encoder = commandBuffer.makeBlitCommandEncoder()!
-        print("make encoders took", date4.distance(to: Date()) * 1000)
         
         encoder.copy(
             from: buffer,
@@ -158,6 +157,7 @@ extension MTLDevice {
         return texture
     }
     
+    /// Uses a Core Graphics draw pass to normalize image bytes before creating a texture.
     private func make_texture_using_CGContext(from image: CGImage, context: MetalContext?, usage: MTLTextureUsage) async throws -> any MTLTexture {
         let cgContext = CGContext(
             data: nil,

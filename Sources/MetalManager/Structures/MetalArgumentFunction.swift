@@ -121,7 +121,7 @@ public extension MetalArgumentFunction {
         encoder.dispatchSize = MTLSize(width: width, height: height, depth: depth)
         
         let library = try await Cache.shared.getLibrary(for: self._function.bundle)
-        let pipelineState = try await Cache.getPipeline(for: self._function, library: library)
+        let pipelineState = try await Cache.shared.getPipeline(for: self._function, library: library)
         encoder.pipelineState = pipelineState
         
         commandBuffer.add(encoder: encoder)

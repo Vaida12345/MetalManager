@@ -21,7 +21,7 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
     
     private var textures: [any MTLTexture]
     
-    private var samplers: [MTLSamplerDescriptor]
+    private var samplers: [(any MTLSamplerState)?]
     
     internal var dispatchSize: MTLSize?
     
@@ -65,40 +65,18 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
         
         encoder.setTextures(textures, range: 0..<textures.count)
         if !self.samplers.isEmpty {
-            encoder.setSamplerStates(self.samplers.map({ MetalManager.computeDevice.makeSamplerState(descriptor: $0) }), range: 0..<samplers.count)
+            encoder.setSamplerStates(self.samplers, range: 0..<samplers.count)
         }
         
         encoder.label = "Encoder(for: \(function.name), textureCount: \(textures.count), bufferCount: \(bufferCount), dispatchSize: \(dispatchSize!))"
-        
-        
-        let supportsNonuniform: Bool = MetalManager.supportsNonUniformGridSize
-        let gridSize = self.dispatchSize!
-        
-        if gridSize.height == 1 && gridSize.depth == 1 {
-            let threadsPerThreadgroup = MTLSize(width: pipelineState!.maxTotalThreadsPerThreadgroup, height: 1, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + threadsPerThreadgroup.width - 1) / threadsPerThreadgroup.width,
-                                              height: 1,
-                                              depth: 1)
-            
-            if supportsNonuniform {
-                encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
-            } else {
-                encoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-            }
-        } else {
-            let size = Int(sqrt(Double(pipelineState!.maxTotalThreadsPerThreadgroup)))
-            
-            let threadsPerThreadgroup = MTLSize(width: size, height: size, depth: 1)
-            let threadgroupsPerGrid = MTLSize(width: (gridSize.width + size - 1) / size,
-                                              height: (gridSize.height + size - 1) / size,
-                                              depth: 1)
-            
-            if supportsNonuniform {
-                encoder.dispatchThreads(gridSize, threadsPerThreadgroup: threadsPerThreadgroup)
-            } else {
-                encoder.dispatchThreadgroups(threadgroupsPerGrid, threadsPerThreadgroup: threadsPerThreadgroup)
-            }
-        }
+
+        MTLComputeCommandEncoderDispatch(
+            encoder: encoder,
+            pipelineState: pipelineState!,
+            width: dispatchSize!.width,
+            height: dispatchSize!.height,
+            depth: dispatchSize!.depth
+        )
     }
     
     
@@ -132,7 +110,7 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
     }
     
     public func setSampler(_ sampler: MTLSamplerDescriptor) {
-        self.samplers.append(sampler)
+        self.samplers.append(MetalManager.computeDevice.makeSamplerState(descriptor: sampler))
     }
     
     public func setTexture(_ texture: any MTLTexture) {
