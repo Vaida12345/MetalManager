@@ -27,9 +27,8 @@ extension MTLBuffer {
     /// Load the shared contents of the buffer as the given type.
     ///
     /// - Experiment: You do not need to free the returned buffer.
-    public func cast<T>(to type: T.Type, count: Int) -> UnsafeMutableBufferPointer<T> {
+    public func cast<T>(to type: T.Type, count: Int) -> UnsafeMutableBufferPointer<T> where T: BitwiseCopyable {
         let contents = self.contents()
-        
         return UnsafeMutableBufferPointer<T>(start: contents.assumingMemoryBound(to: T.self), count: count)
     }
     
@@ -75,20 +74,21 @@ extension MTLTexture {
     public func makeCGImage(channelsCount: Int = 4, bitsPerComponent: Int = 8, colorSpace: CGColorSpace = CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo = .premultipliedLast) throws -> CGImage {
         let buffer = try self.makeBuffer(channelsCount: channelsCount)
         let rowBytes = width * channelsCount * bitsPerComponent / 8
-        let data = Data(bytesNoCopy: buffer.baseAddress!, count: width * height * 4, deallocator: .free)
+        let data = Data(bytesNoCopy: buffer.baseAddress!, count: width * height * channelsCount, deallocator: .free)
         
         guard let provider = CGDataProvider(data: data as CFData),
-              let cgImage = CGImage(width: width,
-                                    height: height,
-                                    bitsPerComponent: bitsPerComponent,
-                                    bitsPerPixel: channelsCount * bitsPerComponent,
-                                    bytesPerRow: rowBytes,
-                                    space: colorSpace,
-                                    bitmapInfo: CGBitmapInfo(rawValue: bitmapInfo.rawValue),
-                                    provider: provider,
-                                    decode: nil,
-                                    shouldInterpolate: false,
-                                    intent: .defaultIntent) else {
+              let cgImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: bitsPerComponent,
+                bitsPerPixel: channelsCount * bitsPerComponent,
+                bytesPerRow: rowBytes,
+                space: colorSpace,
+                bitmapInfo: CGBitmapInfo(rawValue: bitmapInfo.rawValue),
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent) else {
             throw MetalResourceCreationError.cannotCreateCGImageFromTexture
         }
         

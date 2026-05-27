@@ -42,7 +42,7 @@ public final class MetalFunction: Hashable, MetalFunctionProtocol, @unchecked Se
     ///   - value: The constant value to encode.
     ///   - type: The Metal constant data type for `value`.
     /// - Returns: A new `MetalFunction` that includes the additional constant.
-    public consuming func constant<T>(_ value: T, type: MTLDataType) -> MetalFunction where T: Hashable {
+    public consuming func constant<T>(_ value: T, type: MTLDataType) -> MetalFunction where T: Hashable & BitwiseCopyable {
         let hash = value.hashValue
         let buffer = UnsafeMutablePointer<T>.allocate(capacity: 1)
         buffer.initialize(to: value)

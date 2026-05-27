@@ -104,6 +104,8 @@ public final class MetalCommandEncoder: @unchecked Sendable, CustomStringConvert
     ///   - pointer: The pointer to data.
     ///   - length: The length of data in bytes, which is usually different to the `count` property.
     ///   - deallocator: The handler called after the bytes have been copied, which happens after the function returns.
+    ///
+    /// - Precondition: Pointee must be bitwise-copyable.
     public func setBytes(_ pointer: UnsafeRawPointer, length: Int, deallocator: Data.Deallocator) {
         self.bytes.append((pointer, length, deallocator, self.bufferCount))
         self.bufferCount += 1

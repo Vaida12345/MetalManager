@@ -11,7 +11,7 @@ import Metal
 /// A state whose value is dependent on Metal, and may not be synchronized yet.
 ///
 /// This structure is only designed for the CPU's benefit. For GPU, you could pass such state to `Metal` using ``MetalArgumentFunction/argument(state:)``.
-public final class MetalDependentState<Content> {
+public final class MetalDependentState<Content> where Content: BitwiseCopyable {
     
     private let context: MetalContext
     

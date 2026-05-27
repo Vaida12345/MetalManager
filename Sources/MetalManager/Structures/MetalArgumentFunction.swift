@@ -56,7 +56,7 @@ public extension MetalFunctionProtocol {
     /// Copies data directly to the GPU to populate an entry in the buffer argument table.
     ///
     /// - Important: This method only works for data smaller than 4 kilobytes that doesn’t persist. Create an MTLBuffer instance if your data exceeds 4 KB, needs to persist on the GPU, or you access results on the CPU.
-    consuming func argument<T>(bytes: T) -> MetalArgumentFunction {
+    consuming func argument<T>(bytes: T) -> MetalArgumentFunction where T: BitwiseCopyable {
         let length = MemoryLayout<T>.size
         let buffer = UnsafeMutablePointer<T>.allocate(capacity: 1)
         buffer.initialize(to: bytes)

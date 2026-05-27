@@ -39,7 +39,7 @@ extension MTLDevice {
     public func makeBuffer<T>(
         bytes buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = []
-    ) throws -> any MTLBuffer {
+    ) throws -> any MTLBuffer where T: BitwiseCopyable {
         let label = "copied from \(buffer.debugDescription)"
         guard let buffer = self.makeBuffer(bytes: buffer.baseAddress!, length: buffer.count &* MemoryLayout<T>.stride, options: options) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
@@ -60,7 +60,7 @@ extension MTLDevice {
         bytesNoCopy buffer: UnsafeMutableBufferPointer<T>,
         options: MTLResourceOptions = [],
         deallocator: (@Sendable (UnsafeMutableRawPointer, Int) -> Void)? = nil
-    ) throws -> any MTLBuffer {
+    ) throws -> any MTLBuffer where T: BitwiseCopyable {
         guard let baseAddress = buffer.baseAddress else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: buffer.debugDescription)
         }
@@ -78,7 +78,7 @@ extension MTLDevice {
     public func makeBuffer<T>(
         bytesNoCopy array: inout Array<T>,
         options: MTLResourceOptions = []
-    ) throws -> any MTLBuffer {
+    ) throws -> any MTLBuffer where T: BitwiseCopyable {
         guard !array.isEmpty else { throw MetalResourceCreationError.cannotCreateBuffer(source: array.description) }
         let label = "no copy from \(array.debugDescription)"
         guard let buffer = self.makeBuffer(bytesNoCopy: &array, length: array.count &* MemoryLayout<T>.stride, options: options, deallocator: .none) else {
@@ -95,7 +95,7 @@ extension MTLDevice {
         of type: T,
         count: Int,
         options: MTLResourceOptions = []
-    ) throws -> any MTLBuffer {
+    ) throws -> any MTLBuffer where T: BitwiseCopyable {
         guard let buffer = self.makeBuffer(length: MemoryLayout<T>.stride &* count, options: options) else {
             throw MetalResourceCreationError.cannotCreateBuffer(source: "(type \(type), count: \(count))")
         }
